@@ -1,0 +1,49 @@
+PATHS:
+  DATA_ROOT: /dataset/AffectNet
+  VIS_PATH: ./assets/loader/
+
+FLOW:
+  N_FLOW: 1
+  N_BLOCK: 8
+  IN_FEAT: 128
+  MLP_DIM: 256
+  INIT_ZEROS: False
+  DROPOUT: TRUE
+
+DATASET:
+  IN_DIST: aff
+  N_CLASS: 8
+  IMG_SIZE: 32
+  NUM_WORKERS: 2
+  AUG: True
+  W_SAMPLER: True
+
+TRAINING:
+  ITER: 501
+  BATCH: 64
+  LR: 1e-3
+  WT_DECAY: 1e-5
+  MOMENTUM: 0.9
+  DROPOUT: 0
+  PRETRAINED: wideresnet
+  PRT_CONFIG: 2
+  PRT_LAYER: 3
+
+LR:
+  WARM: False
+  ADJUST: False
+  WARM_ITER: 50
+  WARMUP_FROM: 1e-6
+  DECAY_RATE: 0.1
+  MIN_LR: 1e-6
+  T_MAX: 100
+
+TEST:
+  EMP_PARAMS: True
+  SCORE: True
+  MAGNITUDE: 0.0024
+  IN_FEATS: [64, 128, 256, 1280]
+
+COMMENTS:
+  RESNER CIFAR TRAINING with cosine scheduler
+  

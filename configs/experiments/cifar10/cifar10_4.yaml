@@ -1,0 +1,49 @@
+PATHS:
+  DATA_ROOT: ./data
+  VIS_PATH: ./assets/loader/
+
+FLOW:
+  N_FLOW: 1
+  N_BLOCK: 8
+  IN_FEAT: 128
+  MLP_DIM: 256
+  INIT_ZEROS: False
+  DROPOUT: TRUE
+
+DATASET:
+  IN_DIST: cifar10
+  N_CLASS: 10
+  IMG_SIZE: 32
+  NUM_WORKERS: 2
+  AUG: True
+  W_SAMPLER: True
+
+TRAINING:
+  ITER: 201
+  BATCH: 128
+  LR: 1e-5
+  WT_DECAY: 1e-5
+  MOMENTUM: 0.9
+  DROPOUT: 0
+  PRETRAINED: wideresnet
+  PRT_CONFIG: 4
+  PRT_LAYER: 3
+
+LR:
+  WARM: False
+  ADJUST: False
+  WARM_ITER: 50
+  WARMUP_FROM: 1e-6
+  DECAY_RATE: 0.1
+  MIN_LR: 1e-6
+  T_MAX: 100
+
+TEST:
+  EMP_PARAMS: False
+  SCORE: True
+  MAGNITUDE: 0.000
+  IN_FEATS: [64, 128, 128, 512]
+
+COMMENTS:
+  RESNER CIFAR TRAINING with cosine scheduler
+  
