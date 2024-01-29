@@ -105,3 +105,12 @@ MAHA
             'AUROC': 0.6118344015869747,
             'DTACC': 0.5894820856328467,
             'TNR': 0.1849646588813768}},
+
+
+
+git remote set-url origin saandeepa.93@gmail.com:saandeepa93/FlowCon_OOD.git
+ssh -vT saandeepa.93@gmail.com
+
+
+
+SHA256:ggc57KKdIdFJSUm8Ol7yuFyY8ZAoTrOJF6q9rKl/W4o
