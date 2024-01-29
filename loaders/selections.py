@@ -191,12 +191,13 @@ def select_ood_transform(cfg, dataset, id_dataset='cifar10'):
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         elif dataset in ['svhn', 'lsun-r', 'isun', 'cifar10', 'cifar100', 'tinyimages']:
+            print("here", id_dataset, dataset)
             transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         else:
             raise NotImplementedError
-    if id_dataset in ['raf', 'aff']:
+    elif id_dataset in ['raf', 'aff']:
         if cfg.TRAINING.PRETRAINED == 'resnet101':
                 transform = transforms.Compose([
                     transforms.Resize(cfg.DATASET.IMG_SIZE, interpolation=Image.BILINEAR),

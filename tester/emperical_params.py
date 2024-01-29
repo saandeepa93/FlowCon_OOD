@@ -21,6 +21,8 @@ from models import *
 from losses import FlowConLoss
 
 
+
+
 def validate_results(cfg, args, epoch, model, pretrained, device, criterion, train_loader, test_loader):
     # PRETRAINED MODEL
   if cfg.TRAINING.PRETRAINED == "resnet18":
@@ -247,7 +249,8 @@ def calc_scores_2(cfg, args, loader, pretrained, flow, cls, mu, log_sd, criterio
       # score = torch.max(log_probs, dim=-1)[0].cpu().tolist()
       
       z, mu, log_sd, sdlj, _, _ = flow(features)
-      _, score, _, _ = criterion.nllLoss(z, sdlj, mu, log_sd)
+      # _, score, _, _ = criterion.nllLoss(z, sdlj, mu, log_sd) # CIFAR10_4_WIDENET
+      score, _, _, _ = criterion.nllLoss(z, sdlj, mu, log_sd) #CIFAR10_RESNET
       score = score.detach().cpu().tolist()
 
       scores_all += score
@@ -352,18 +355,15 @@ if __name__ == "__main__":
 
   id_transform = select_ood_transform(cfg, cfg.DATASET.IN_DIST, cfg.DATASET.IN_DIST)
   test_set = select_ood_testset(cfg, cfg.DATASET.IN_DIST, id_transform)
-  num_ood = 499 #len(test_set) // 5
+  num_ood = len(test_set) // 5
   train_set = select_dataset(cfg, cfg.DATASET.IN_DIST, id_transform, train=True)
-
-  # train_transform = select_transform(cfg.DATASET.IN_DIST, pretrain=True)
-  # train_set = select_dataset(cfg.DATASET.IN_DIST, train_transform, train=True)
 
   train_loader = DataLoader(train_set, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
   test_loader = DataLoader(test_set, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
 
 
-  # ood_datasets = ['lsun-r', 'lsun-c', 'isun', 'svhn', 'textures', 'places365']
-  ood_datasets = ['aff']
+  ood_datasets = ['lsun-r', 'lsun-c', 'isun', 'svhn', 'textures', 'places365']
+  # ood_datasets = ['aff']
   result = {}
 
   criterion = FlowConLoss(cfg, device)
@@ -453,7 +453,7 @@ if __name__ == "__main__":
 
           # result[str(mag)].append(metric(np.array(scores_in), np.array(scores_out), stype=ood_ds))
           ic(results_dict)
-          e()
+          # e()
       avg_result_dict["rocauc"] = avg_result_dict["rocauc"] / len(ood_datasets)
       avg_result_dict["aupr_success"] = avg_result_dict["aupr_success"] / len(ood_datasets)
       avg_result_dict["aupr_error"] = avg_result_dict["aupr_error"] / len(ood_datasets)
@@ -463,9 +463,9 @@ if __name__ == "__main__":
       result[str(mag)].append(avg_result_dict)
   res_path = os.path.join("./data/results", f"{db}_{cfg.TRAINING.PRT_CONFIG}")
   mkdir(res_path)
-  with open(f'{res_path}/avg_{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_{cfg.TEST.MAGNITUDE}_temp.json', 'w') as fp:
+  with open(f'{res_path}/avg_{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_{cfg.TEST.MAGNITUDE}_temp2.json', 'w') as fp:
     json.dump(avg_result_dict, fp, indent=4)
-  with open(f'{res_path}/{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_{cfg.TEST.MAGNITUDE}_temp.json', 'w') as fp:
+  with open(f'{res_path}/{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_{cfg.TEST.MAGNITUDE}_temp2.json', 'w') as fp:
     json.dump(result, fp, indent=4)
 
   e()

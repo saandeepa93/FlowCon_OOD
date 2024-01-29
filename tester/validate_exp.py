@@ -10,23 +10,25 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from PIL import Image, ImageFile
 
-from loaders import getTargetDataSet
+from loaders import select_ood_testset, select_classifier, select_dataset, select_ood_transform, select_transform
 from utils import seed_everything, get_args, get_metrics, mkdir
 from configs import get_cfg_defaults
-from models import LatentModel, DenseNet3, ResNet34, EfficientNet
+# from models import LatentModel, DenseNet3, ResNet34, EfficientNet
 from losses import FlowConLoss
 
 
-def validate(cfg, loader, pretrained, device):
+def validate(cfg, loader, pretrained, cls, device):
   y_pred = []
   y_true = []
   pretrained.eval()
+  cls.eval()
   for b, (x, label) in enumerate(loader, 0):
     x = x.to(device)
     label = label.to(device)
 
     # _, _, features = pretrained.penultimate_forward(x)
-    out = pretrained(x)
+    feats = pretrained(x)
+    out = cls(feats)
     y_pred += torch.argmax(out, dim=-1).cpu().tolist()
     y_true += label.cpu().tolist()
 
@@ -54,40 +56,32 @@ if __name__ == "__main__":
   cfg.freeze()
   print(cfg)
 
+  
+  pretrained, cls = select_classifier(cfg, cfg.DATASET.IN_DIST, cfg.TRAINING.PRETRAINED, cfg.DATASET.N_CLASS)
   # PRETRAINED MODEL
-  if cfg.TRAINING.PRETRAINED == "densenet":
-    pretrained = DenseNet3(100, cfg.DATASET.N_CLASS)
-    pretrained = pretrained.to(device)
-    checkpt = torch.load(f"{ckp_path}/{args.config}_densenet.pt", map_location=device)
-  elif cfg.TRAINING.PRETRAINED == "resnet":
-    pretrained = ResNet34(cfg.DATASET.N_CLASS)
-    pretrained = pretrained.to(device)
-    checkpt = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_resnet.pt", map_location=device)
-  elif cfg.TRAINING.PRETRAINED == "effnet":
-    model = EfficientNet(cfg.DATASET.N_CLASS)
+  if cfg.TRAINING.PRETRAINED in ["resnet18", 'resnet101', 'effnet']:
+    checkpoint = torch.load(f'./checkpoints/classifiers/{cfg.DATASET.IN_DIST}_{cfg.TRAINING.PRETRAINED}.pt', map_location=device)
+  elif cfg.TRAINING.PRETRAINED == "wideresnet":
+    checkpoint = torch.load(f'./checkpoints/classifiers/{cfg.DATASET.IN_DIST}_{cfg.TRAINING.PRETRAINED}_40_2.pt', map_location=device)
 
-
-  sd = {k: v for k, v in checkpt['state_dict'].items()}
-  state = pretrained.state_dict()
-  state.update(sd)
-  pretrained.load_state_dict(state, strict=True)
+  if cfg.DATASET.IN_DIST in ['raf', 'aff']:
+    sd = {k: v for k, v in checkpoint['net_state_dict'].items()}
+    state = pretrained.state_dict()
+    state.update(sd)
+    pretrained.load_state_dict(state, strict=True)
+  else:
+    pretrained.load_state_dict(checkpoint['net_state_dict'])
+    cls.load_state_dict(checkpoint['cls_state_dict'])
   
-  transform_train = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])
-  transform_test = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])
+  pretrained = pretrained.to(device)
+  cls = cls.to(device)
 
-  
   # LOADER
-  train_loader, test_loader = getTargetDataSet(cfg, cfg.DATASET.IN_DIST, cfg.TRAINING.BATCH, transform_train, transform_test, './data')
+  id_transform = select_ood_transform(cfg, cfg.DATASET.IN_DIST, cfg.DATASET.IN_DIST)
+  test_set = select_ood_testset(cfg, cfg.DATASET.IN_DIST, id_transform)
+  test_loader = DataLoader(test_set, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
 
   with torch.no_grad():
-    y_pred, y_true = validate(cfg, test_loader, pretrained, device)
+    y_pred, y_true = validate(cfg, test_loader, pretrained, cls, device)
   val_acc, val_err = get_metrics(y_true, y_pred)
   ic(val_acc)

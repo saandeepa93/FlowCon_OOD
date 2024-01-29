@@ -3,8 +3,8 @@ PATHS:
   VIS_PATH: ./assets/loader/
 
 FLOW:
-  N_FLOW: 4
-  N_BLOCK: 12
+  N_FLOW: 1
+  N_BLOCK: 8
   IN_FEAT: 512
   MLP_DIM: 256
   INIT_ZEROS: False
@@ -44,7 +44,7 @@ LOSS:
 TEST:
   EMP_PARAMS: True
   SCORE: True
-  MAGNITUDE: 0.001
+  MAGNITUDE: 0.00
   IN_FEATS: [64, 128, 256, 512]
 
 COMMENTS:

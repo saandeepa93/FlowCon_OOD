@@ -45,8 +45,8 @@ def train(cfg, loader, epoch, pretrained, flow, criterion, optimizer, device):
     with torch.no_grad():
       # _, _, features = pretrained.penultimate_forward(x)
       features = pretrained.intermediate_forward(x, cfg.TRAINING.PRT_LAYER)
-      # features = features.view(features.size(0), features.size(1), -1)
-      # features = torch.mean(features, 2)
+      features = features.view(features.size(0), features.size(1), -1)
+      features = torch.mean(features, 2)
     
     # WARMUP LEARNING RATE
     warmup_learning_rate(cfg, epoch, b, len(loader), optimizer)

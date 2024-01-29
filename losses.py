@@ -51,10 +51,10 @@ class FlowConLoss:
     loss = self.init_loss + logdet + log_p_nll
     
     return ( 
-      # (-loss / (log(2) * self.n_pixel)).mean(), # CONVERTING LOGe to LOG2 |
-      # (log_p_nll / (log(2) * self.n_pixel)).mean(), #                     v
-      (loss / (log(2) * self.n_pixel)), # CONVERTING LOGe to LOG2 |
-      (log_p_nll / (log(2) * self.n_pixel)), #                     v
+      (-loss / (log(2) * self.n_pixel)).mean(), # CONVERTING LOGe to LOG2 |
+      (log_p_nll / (log(2) * self.n_pixel)).mean(), #                     v
+      # (loss / (log(2) * self.n_pixel)), # CONVERTING LOGe to LOG2 |
+      # (log_p_nll / (log(2) * self.n_pixel)), #                     v
       (logdet / (log(2) * self.n_pixel)).mean(), 
       (log_p_all/ (log(2) * self.n_pixel))
   )
