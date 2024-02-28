@@ -11,19 +11,36 @@ from torch.autograd import Variable
 from PIL import Image
 from torch.utils.data import DataLoader
 
+import itertools
 from einops import rearrange
 from math import log, pi
 
 from loaders import select_ood_testset, select_classifier, select_dataset, select_ood_transform, select_transform
-from utils import seed_everything, get_args, get_metrics, mkdir, make_roc, plot_umap, metric, get_metrics_ood
+from utils import seed_everything, get_args, get_metrics, mkdir, make_roc, plot_umap, metric
 from configs import get_cfg_defaults
 from models import *
 from losses import FlowConLoss
+from sklearn.metrics import accuracy_score
 
 import torch.profiler as profiler
 
 
+def get_metrics_ood(label, score, invert_score=False):
+    results_dict = {}
+    if invert_score:
+        score = score - score.max()
+        score = np.abs(score)
 
+    error = 1 - label
+    fpr = 0
+    eval_range = np.arange(score.min(), score.max(), (score.max() - score.min()) / 10000)
+    for i, delta in enumerate(eval_range):
+        tpr = len(score[(label == 1) & (score >= delta)]) / len(score[(label == 1)])
+        if 0.9505 >= tpr >= 0.9495:
+            print(delta)
+            break
+    print(delta)
+    e()
 
 
 def gaussian_log_p(x, mean, log_sd):
@@ -42,70 +59,18 @@ def calc_likelihood(cfg, z, mu, log_sd, device, n_pixel, logdet):
   # ic(z.size(), mu.size(), log_sd.size(), log_p_batch.size(), log_p_all.size())
   return (log_p_all/ (log(2) * n_pixel))
 
-def calc_emp_params(cfg, args, loader, pretrained, flow, dist_dir, device, labels_in_ood=None):
-  z_all, mu_all, log_sd_all = [], [], []
-  labels_all = []
-
-  pretrained.eval()
-  flow.eval()
-  for b, (x, label) in enumerate(tqdm(loader), 0):
-    x = x.to(device)
-    label = label.to(device)
-
-    # _, _, features = pretrained.penultimate_forward(x)
-    features = pretrained.intermediate_forward(x, cfg.TRAINING.PRT_LAYER)
-
-    features = features.view(features.size(0), features.size(1), -1)
-    features = torch.mean(features, 2)
-    z, means, log_sds, sldj, log_vars, logits = flow(features)
-
-    z_all.append(z)
-    mu_all.append(means)
-    log_sd_all.append(log_sds)
-
-    labels_all.append(label)
-
-  labels_all = torch.cat(labels_all, dim=0)
-  z = torch.cat(z_all, dim=0)
-
-  # plot_umap(cfg, z.cpu(), labels_all.cpu(), f"{args.config}", 2, "in_ood", labels_in_ood)
-
-  mu_k, std_k , z_k= [], [], []
-  for cls in range(cfg.DATASET.N_CLASS):
-    cls_indices = (labels_all == cls).nonzero().squeeze()
-    mu_k.append(torch.index_select(torch.cat(mu_all, dim=0), 0, cls_indices).mean(0))
-    std_k.append(torch.index_select(torch.cat(log_sd_all, dim=0), 0, cls_indices).mean(0))
-    # z_k.append(torch.index_select(z, 0, cls_indices).mean(0))
-  
-  torch.save(mu_k, os.path.join(dist_dir, "mu.pt"))
-  torch.save(std_k, os.path.join(dist_dir, "log_sd.pt"))
-
-def merge_and_generate_labels(X_pos, X_neg):
-    """
-    merge positve and nagative artifact and generate labels
-    return: X: merged samples, 2D ndarray
-             y: generated labels (0/1): 2D ndarray same size as X
-    """
-    X_pos = np.asarray(X_pos, dtype=np.float32)
-    X_pos = X_pos.reshape((X_pos.shape[0], -1))
-
-    X_neg = np.asarray(X_neg, dtype=np.float32)
-    X_neg = X_neg.reshape((X_neg.shape[0], -1))
-
-    X = np.concatenate((X_pos, X_neg))
-    y = np.concatenate((np.ones(X_pos.shape[0]), np.zeros(X_neg.shape[0])))
-    y = y.reshape((X.shape[0], 1))
-
-    return X, y
 
 def calc_scores_2(cfg, args, loader, pretrained, flow, cls, mu, log_sd, criterion, loss_criterion, device, flg=False):
   n_pixel = cfg.FLOW.IN_FEAT
   scores_all = []
+  labels_all = []
+  preds_all = []
+  fnames_all = []
 
   pretrained.eval()
   flow.eval()
   cls.eval()
-  for b, (x, _) in enumerate(tqdm(loader), 0):
+  for b, (x, true_label) in enumerate(tqdm(loader), 0):
     x = x.to(device)
     x= Variable(x, requires_grad = True)
     
@@ -149,72 +114,20 @@ def calc_scores_2(cfg, args, loader, pretrained, flow, cls, mu, log_sd, criterio
       features = features.view(features.size(0), features.size(1), -1)
       features = torch.mean(features, 2)
 
-      # z,n_mu, n_log_sd, sdlj, _, _ = flow(features)
-      # log_probs = calc_likelihood(cfg, z, n_mu, n_log_sd, device, n_pixel, sdlj)
-      # score = torch.max(log_probs, dim=-1)[0].cpu().tolist()
-      
       z, n_mu, n_log_sd, sdlj, _, _ = flow(features)
-      # _, score, _, _ = criterion.nllLoss(z, sdlj, n_mu, n_log_sd) # CIFAR10_4_WIDENET
       score, _, _, _ = criterion.nllLoss(z, sdlj, n_mu, n_log_sd) #CIFAR10_3_RESNET
 
-      if flg:
-        ic(score.size(), label.size(), true_label.size(), len(fname))
-        e()
       score = score.detach().cpu().tolist()
-
-
+      true_label = true_label.detach().cpu().tolist()
+      label = label.detach().cpu().tolist()
 
       scores_all += score
-      # if flg:
-      #   ic(score)
-      #   e()
-
-  return scores_all
-
-def validate(cfg, args, loader, pretrained, flow, mu, log_sd, device):
-  n_pixel = cfg.FLOW.IN_FEAT
-  y_val_pred = []
-  y_val_true = []
-
-  pretrained.eval()
-  flow.eval()
-  for b, (x, label) in enumerate(tqdm(loader), 0):
-    x = x.to(device)
-    label = label.to(device)
-    features = pretrained.intermediate_forward(x, cfg.TRAINING.PRT_LAYER)
-    features = features.view(features.size(0), features.size(1), -1)
-    features = torch.mean(features, 2)
-    
-    z, _, _, sdlj, _, _ = flow(features)
-    log_probs = calc_likelihood(cfg, z, mu, log_sd, device, n_pixel, sdlj)
-    
-    pred = torch.argmax(log_probs, dim=1)
-    y_val_pred += pred.cpu().tolist()
-    y_val_true += label.cpu().tolist()
-    
-  val_acc, _ = get_metrics(y_val_true, y_val_pred)
-  ic(val_acc)
-
-def calc_score(cfg, args, loader, pretrained, flow, mu, log_sd, criterion, device):
-  n_pixel = cfg.FLOW.IN_FEAT
-  scores_all = []
-
-  pretrained.eval()
-  flow.eval()
-  for b, (x, label) in enumerate(tqdm(loader), 0):
-    x = x.to(device)
-    label = label.to(device)
-    _, _, features = pretrained.penultimate_forward(x)
-    z, mu, log_sd, sdlj, _, _ = flow(features)
-    
-    nll_loss, score, _, log_p_all = criterion.nllLoss(z, sdlj, mu, log_sd)
-    scores_all += score.tolist()
-
-    log_probs = calc_likelihood(cfg, z, mu, log_sd, device, n_pixel, sdlj)
-    score = torch.max(log_probs, dim=-1)[0].tolist()
+      preds_all += label
+      labels_all += true_label
 
 
-  return scores_all
+  return labels_all, preds_all, scores_all
+
 
 
 if __name__ == "__main__":
@@ -222,7 +135,6 @@ if __name__ == "__main__":
   args = get_args()
   db = args.config.split("_")[0]
   config_path = os.path.join(f"./configs/experiments/{db}", f"{args.config}.yaml")
-  
   ckp_path = os.path.join(f"./checkpoints/{db}")
   # ckp_path = os.path.join(f"./checkpoints/main")
   # ckp_path = os.path.join(f"./checkpoints/{db}/{args.config}")
@@ -269,17 +181,13 @@ if __name__ == "__main__":
   # id_transform = select_ood_transform(cfg, cfg.DATASET.IN_DIST, cfg.DATASET.IN_DIST)
   # test_set = select_ood_testset(cfg, cfg.DATASET.IN_DIST, id_transform)
   id_transform = select_transform(cfg, cfg.DATASET.IN_DIST, pretrain=False)
-  ic(id_transform)
   test_set = select_dataset(cfg, cfg.DATASET.IN_DIST, id_transform, train=False)
   orig_num_ood = len(test_set) // 5
-  train_set = select_dataset(cfg, cfg.DATASET.IN_DIST, id_transform, train=True)
-
-  train_loader = DataLoader(train_set, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
   test_loader = DataLoader(test_set, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
 
 
   # ood_datasets = ['lsun-r', 'lsun-c', 'isun', 'svhn', 'textures', 'places365']
-  ood_datasets = ['cifar10']
+  ood_datasets = ['aff']
   result = {}
 
   criterion = FlowConLoss(cfg, device)
@@ -307,7 +215,8 @@ if __name__ == "__main__":
 
       # FLOW MODEL
       flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow.pt", map_location=device)
-      # flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_200.pt", map_location=device)
+      # flow_ckp = torch.load(f"{ckp_path}/{args.config}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_200.pt", map_location=device)
+      # flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_600.pt", map_location=device)
       sd = {k: v for k, v in flow_ckp['state_dict'].items()}
       state = model.state_dict()
       state.update(sd)
@@ -320,77 +229,59 @@ if __name__ == "__main__":
       mkdir(dist_path)
 
       
-      if cfg.TEST.EMP_PARAMS:
-        if ctr == 0 and ctr2==0:
-          print("Saving params...")
-          with torch.no_grad():
-            calc_emp_params(cfg, args, train_loader, pretrained, model, dist_path, device)
-      
       # load params
       mu = torch.load(os.path.join(dist_path, "mu.pt"), map_location=device)
       log_sd = torch.load(os.path.join(dist_path, "log_sd.pt"), map_location=device)
       mu =  torch.stack(mu)
       log_sd =  torch.stack(log_sd)
-      
-      scores_in = calc_scores_2(cfg, args, test_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
-      # with torch.no_grad():
-      #   validate(cfg, args, test_loader, pretrained, model, mu, log_sd, device)
 
-      scores_in_ds = []
-      scores_ood_ds = []
-      result_ds = {}
+      thresh_dict = {"aff_4": -2.796689883709161, "aff_5": -11.944983131679866, "raf_4": -2.917621004939253, "raf_5": -8.999182610697972}
+      
       for ood_ds in ood_datasets:
         if cfg.DATASET.IN_DIST == ood_ds:
           continue
         print(f"Running {ood_ds}")
         if cfg.TEST.SCORE:
           ood_transform = select_ood_transform(cfg, ood_ds, cfg.DATASET.IN_DIST)
-          ic(ood_transform)
           ood_dataset = select_ood_testset(cfg, ood_ds, ood_transform)
           ood_loader = DataLoader(ood_dataset, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
 
           num_ood = min(orig_num_ood, len(ood_dataset))
-          # # UMAP EMBEDDING
-          # with torch.no_grad():
-          #   in_ood_sets = torch.utils.data.ConcatDataset([test_set, ood_dataset])
-          #   in_ood_loader = DataLoader(in_ood_sets, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
-          #   lables = torch.cat([torch.ones(len(test_set), dtype=torch.int8), torch.zeros(len(ood_dataset), dtype=torch.int8)], dim=0)
-          #   calc_emp_params(cfg, args, in_ood_loader, pretrained, model, dist_path, device, lables)
-          #   e()
           
           print("Calculating Scores...")
-          scores_out = calc_scores_2(cfg, args, ood_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
-          scores_out = scores_out[:num_ood]
-          scores_out = np.array(scores_out)
-          scores_out = scores_out[~np.isnan(scores_out)]
-          scores_out = scores_out[np.isfinite(scores_out)]
+          labels_all, preds_all, scores_all = calc_scores_2(cfg, args, ood_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
+          ood_labels = np.zeros(len(scores_all))
+          scores_all = np.array(scores_all)
 
-          scores = np.concatenate([np.array(scores_in), scores_out], axis=0)
-          labels = np.concatenate([np.ones(len(test_set)), np.zeros(len(scores_out))], axis=0)
-          ic(len(scores_in), len(test_set),len(scores_out), num_ood )
-          results_dict = get_metrics_ood(labels, scores, invert_score=False)
-          result_ds[ood_ds] = results_dict
+          thresh = scores_all.mean()#thresh_dict[args.config]
+          id_ind = [i for i, s in enumerate(scores_all) if s < thresh]
+          # id_ind = [i for i, s in enumerate(scores_all) if s > thresh]
+          # id_ind = [i for i, s in enumerate(scores_all)]
+          gt = [labels_all[i] for i in id_ind]
+          pr = [preds_all[i] for i in id_ind]
 
-          avg_result_dict["rocauc"] += results_dict["rocauc"]
-          avg_result_dict["aupr_success"] += results_dict["aupr_success"]
-          avg_result_dict["aupr_error"] += results_dict["aupr_error"]
-          avg_result_dict["fpr"] += results_dict["fpr"]
+          if ood_ds == "raf":
+            ad_prs = []
+            pr_dict = {0:6, 2:4, 3:0, 4:1, 5:2, 6:5}
+            for p in pr:
+              if p in [1, 7]:
+                ad_prs.append(3)
+              else:
+                ad_prs.append(pr_dict[p])
+            print(len(gt), len(ad_prs))
+            print(accuracy_score(gt, ad_prs))
+          elif ood_ds == "aff":
+            ad_prs = []
+            ad_gt = [i if i <=6 else 1 for i in gt ]
 
-          
-          ic(results_dict)
-          # e()
-      avg_result_dict["rocauc"] = avg_result_dict["rocauc"] / len(ood_datasets)
-      avg_result_dict["aupr_success"] = avg_result_dict["aupr_success"] / len(ood_datasets)
-      avg_result_dict["aupr_error"] = avg_result_dict["aupr_error"] / len(ood_datasets)
-      avg_result_dict["fpr"] = avg_result_dict["fpr"] / len(ood_datasets)
-      
-      ic(avg_result_dict)
-      # result[str(mag)].append(avg_result_dict)
-  res_path = os.path.join("./data/results", f"{args.config}")
-  mkdir(res_path)
-  with open(f'{res_path}/avg_{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_cov.json', 'w') as fp:
-    json.dump(avg_result_dict, fp, indent=4)
-  with open(f'{res_path}/ds_{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_cov.json', 'w') as fp:
-    json.dump(result_ds, fp, indent=4)
+            pr_dict = {0:3, 1: 4, 2:5, 3:1, 4:2, 5:6, 6:0}
+            for p in pr:
+              ad_prs.append(pr_dict[p])
+
+            print(len(gt), len(ad_prs))
+            print(accuracy_score(ad_gt, ad_prs))
+          e()
+
+
 
 

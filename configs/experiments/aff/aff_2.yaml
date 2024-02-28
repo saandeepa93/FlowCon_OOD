@@ -24,7 +24,7 @@ TRAINING:
   LR: 1e-3
   WT_DECAY: 1e-5
   MOMENTUM: 0.9
-  DROPOUT: 0
+  DROPOUT: False
   PRETRAINED: wideresnet
   PRT_CONFIG: 2
   PRT_LAYER: 3

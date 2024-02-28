@@ -117,3 +117,4 @@ runs
 runs2
 analysis.py
 moon_nvp.py
+wandb

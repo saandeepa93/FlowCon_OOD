@@ -13,10 +13,10 @@ import plotly.graph_objs as go
 
 
 from sklearn.metrics import accuracy_score
-from sklearn.metrics import roc_auc_score, average_precision_score
+from sklearn.metrics import roc_auc_score, average_precision_score, roc_curve, precision_recall_curve
 
 
-
+import matplotlib.pyplot as plt
 
 
 
@@ -155,7 +155,7 @@ def make_roc(confidence, labels, nth):
 
 def mkdir(path):
   if not os.path.isdir(path):
-    os.mkdir(path)
+    os.makedirs(path)
 
 def seed_everything(seed):
   random.seed(seed)
@@ -180,7 +180,27 @@ def get_metrics(y_true, y_pred):
   return round(acc, 3), error_rate
 
 
+def save_roc(tpr, fpr):
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.legend(loc="lower right")
+    plt.savefig("./data/roc.png")
 
+
+def save_pr(precision, recall):
+    plt.figure(figsize=(8, 6))
+    plt.plot(recall, precision, label='Precision-Recall curve')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve')
+    plt.legend(loc="upper right")
+    plt.savefig("./data/pr.png")
 
 def get_metrics_ood(label, score, invert_score=False):
     results_dict = {}
@@ -194,19 +214,34 @@ def get_metrics_ood(label, score, invert_score=False):
     aupr_success = average_precision_score(label, score)
     aupr_errors = average_precision_score(error, (1 - score))
 
+    precision, recall, thresholds = precision_recall_curve(label, score)
+
     # calculate fpr @ 95% tpr
     fpr = 0
     eval_range = np.arange(score.min(), score.max(), (score.max() - score.min()) / 10000)
+    target_tpr = 0.95
+    
+    best_fpr = 100
+    best_delta = score.min()
     for i, delta in enumerate(eval_range):
         tpr = len(score[(label == 1) & (score >= delta)]) / len(score[(label == 1)])
-        if 0.9505 >= tpr >= 0.9495:
-            fpr = len(score[(error == 1) & (score >= delta)]) / len(score[(error == 1)])
-            break
+        fpr, tpr, thresholds = roc_curve(label, score)
+        closest_tpr_index = np.argmin(np.abs(tpr - target_tpr))
+        fpr = fpr[closest_tpr_index]
+        if fpr < best_fpr:
+          best_fpr = fpr
+          best_delta = delta
+       
+        # if 0.9505 >= tpr >= 0.9495:
+        #     fpr = len(score[(error == 1) & (score >= delta)]) / len(score[(error == 1)])
+        #     print(delta)
+        #     break
 
+    print(best_fpr, best_delta)
     results_dict["rocauc"] = rocauc
     results_dict["aupr_success"] = aupr_success
     results_dict["aupr_error"] = aupr_errors
-    results_dict["fpr"] = fpr
+    results_dict["fpr"] = best_fpr
     return results_dict
 
 

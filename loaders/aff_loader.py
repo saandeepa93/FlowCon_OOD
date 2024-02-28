@@ -31,9 +31,9 @@ class AffectDataset(Dataset):
     # Private dicts
     self.label_dict = {"Neutral": 0, "Happiness":1, "Sadness":2, "Surprise":3, "Fear":4, "Disgust":5, "Anger":6, "Contempt": 7}
     self.label_dict_inverse = {0: "Neutral", 1: "Happiness", 2: "Sadness", 3: "Surprise", 4: "Fear", 5: "Disgust", 6: "Anger", 7: "Contempt"}
-    self.cnt_dict = {0: 0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0}
-    # self.allowed_labels = [0, 1, 2, 3, 4, 5, 6, 7]
-    self.allowed_labels = [7]
+    self.cnt_dict = {0: 0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0}                       
+    self.allowed_labels = [0, 1, 2, 3, 4, 5, 6, 7]
+    # self.allowed_labels = [7]
     self.all_files_dict = self.__getAllFiles__()
 
     self.all_files = list(self.all_files_dict.keys())

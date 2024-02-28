@@ -12,6 +12,63 @@ from .raf_loader import RafDb
 from .aff_loader import AffectDataset
 
 
+
+
+
+def select_baseline_transform(cfg, dataset, pretrain=False):
+    if pretrain:
+        if dataset in ['cifar10', 'cifar100']:
+            transform = transforms.Compose([
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        elif dataset == 'tinyimagenet':
+            transform = transforms.Compose([
+                transforms.RandomResizedCrop(64),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        elif dataset in ['raf', 'aff']:
+        
+            if cfg.TRAINING.PRETRAINED == 'resnet101':
+                transform = transforms.Compose([
+                    transforms.Resize(cfg.DATASET.IMG_SIZE, interpolation=Image.BILINEAR),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomRotation([-45, 45]),
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            else:    
+                transform = transforms.Compose([
+                transforms.Resize(cfg.DATASET.IMG_SIZE, interpolation=Image.BILINEAR),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation([-45, 45]),
+                transforms.ToTensor(), 
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225]) 
+            ])
+        else:
+            raise NotImplementedError
+    else:
+        if dataset in ['cifar10', 'cifar100', 'tinyimagenet']:
+            transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        elif dataset in ['raf', 'aff']:
+           transform = transforms.Compose([
+            transforms.Resize(cfg.DATASET.IMG_SIZE),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        else:
+            raise NotImplementedError
+      
+
+    return transform
+
+
+
+
+
 def select_transform(cfg, dataset, pretrain=False):
     if pretrain:
         if dataset in ['cifar10', 'cifar100']:
@@ -152,6 +209,7 @@ def select_classifier(cfg, dataset, arch, num_classes, fw_layers=1, depth=40, wi
 
 def select_ood_testset(cfg, dataset, transform):
     if dataset == 'textures':
+        print(transform)
         ood_data = datasets.ImageFolder('/dataset/dtd/images/', transform=transform)
     elif dataset == 'svhn':
         ood_data = datasets.SVHN(os.getcwd() + './data/', split='test', transform=transform, download=True)
@@ -182,19 +240,57 @@ def select_ood_testset(cfg, dataset, transform):
     return ood_data
 
 
+
+def select_ood_baseline_transform(cfg, dataset, id_dataset='cifar10'):
+    if id_dataset in ['cifar10', 'cifar100', 'raf', 'aff']:
+        if dataset in ['textures', 'places365', 'lsun-c']:
+            transform = transforms.Compose([
+                # transforms.Resize(32),
+                transforms.Resize(cfg.DATASET.IMG_SIZE),
+                transforms.CenterCrop(32),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        elif dataset in ['svhn', 'lsun-r', 'isun', 'cifar10', 'cifar100', 'tinyimages', 'aff', 'raf']:
+            transform = transforms.Compose([
+                transforms.Resize(cfg.DATASET.IMG_SIZE),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        else:
+            raise NotImplementedError
+
+    elif id_dataset == 'tinyimagenet':
+        transform = transforms.Compose([
+            transforms.Resize((64, 64)),
+            transforms.CenterCrop(64),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    else:
+        raise NotImplementedError
+    return transform
+
+
+
 def select_ood_transform(cfg, dataset, id_dataset='cifar10'):
     if id_dataset in ['cifar10', 'cifar100']:
         if dataset in ['textures', 'places365', 'lsun-c']:
             transform = transforms.Compose([
-                transforms.Resize(32),
+                # transforms.Resize(32),
+                transforms.Resize(cfg.DATASET.IMG_SIZE),
                 transforms.CenterCrop(32),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         elif dataset in ['svhn', 'lsun-r', 'isun', 'cifar10', 'cifar100', 'tinyimages']:
-            print("here", id_dataset, dataset)
             transform = transforms.Compose([
+                transforms.Resize(cfg.DATASET.IMG_SIZE),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        elif dataset in ['aff']:
+          transform = transforms.Compose([
+                transforms.Resize(cfg.DATASET.IMG_SIZE, interpolation=Image.BILINEAR),
+                transforms.ToTensor(), 
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                    std=[0.229, 0.224, 0.225]) 
+            ])
         else:
             raise NotImplementedError
     elif id_dataset in ['raf', 'aff']:
@@ -204,12 +300,22 @@ def select_ood_transform(cfg, dataset, id_dataset='cifar10'):
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         else:
-            transform = transforms.Compose([
-                transforms.Resize(cfg.DATASET.IMG_SIZE, interpolation=Image.BILINEAR),
-                transforms.ToTensor(), 
-                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    std=[0.229, 0.224, 0.225]) 
-            ])
+            if dataset  in ['textures', 'places365', 'lsun-c']:
+                transform = transforms.Compose([
+                    transforms.Resize(cfg.DATASET.IMG_SIZE, interpolation=Image.BILINEAR),
+                    transforms.CenterCrop(cfg.DATASET.IMG_SIZE),
+                    transforms.ToTensor(), 
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225]) 
+                ])
+            elif dataset in ['svhn', 'lsun-r', 'isun', 'cifar10', 'cifar100', 'tinyimages', 'aff', 'raf']:
+                transform = transforms.Compose([
+                    transforms.Resize(cfg.DATASET.IMG_SIZE, interpolation=Image.BILINEAR),
+                    transforms.ToTensor(), 
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225]) 
+                ])
+
     elif id_dataset == 'tinyimagenet':
         transform = transforms.Compose([
             transforms.Resize((64, 64)),

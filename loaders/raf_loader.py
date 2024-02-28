@@ -16,6 +16,9 @@ class RafDb(Dataset):
     self.cfg = cfg
     self.mode = mode
 
+    cfg.PATHS.DATA_ROOT = "/dataset/raf_db/basic"
+    cfg.DATASET.N_CLASS = 7
+
     # PATHS and DFs
     self.data_dir = os.path.join(cfg.PATHS.DATA_ROOT, "Image", "aligned")
     label_dir = os.path.join(cfg.PATHS.DATA_ROOT, "EmoLabel", "list_patition_label.txt")

@@ -83,6 +83,7 @@ if __name__ == "__main__":
   # LOAD CONFIGURATION
   cfg = get_cfg_defaults()
   cfg.merge_from_file(config_path)
+  cfg.TRAINING.LR=1e-3
   cfg.freeze()
   print(cfg)
 

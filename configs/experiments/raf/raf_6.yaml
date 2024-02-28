@@ -1,9 +1,9 @@
 PATHS:
-  DATA_ROOT: ./data
+  DATA_ROOT: /dataset/raf_db/basic
   VIS_PATH: ./assets/loader/
 
 FLOW:
-  N_FLOW: 1
+  N_FLOW: 2
   N_BLOCK: 8
   IN_FEAT: 128
   MLP_DIM: 256
@@ -11,22 +11,22 @@ FLOW:
   DROPOUT: TRUE
 
 DATASET:
-  IN_DIST: cifar10
-  N_CLASS: 10
+  IN_DIST: raf
+  N_CLASS: 7
   IMG_SIZE: 32
   NUM_WORKERS: 2
   AUG: True
   W_SAMPLER: True
 
 TRAINING:
-  ITER: 201
-  BATCH: 128
-  LR: 1e-5
+  ITER: 701
+  BATCH: 64
+  LR: 1e-4
   WT_DECAY: 1e-5
   MOMENTUM: 0.9
   DROPOUT: False
   PRETRAINED: wideresnet
-  PRT_CONFIG: 4
+  PRT_CONFIG: 6
   PRT_LAYER: 3
 
 LR:
@@ -38,10 +38,13 @@ LR:
   MIN_LR: 1e-6
   T_MAX: 100
 
+LOSS:
+  LMBDA_MIN: 1.
+
 TEST:
-  EMP_PARAMS: False
+  EMP_PARAMS: True
   SCORE: True
-  MAGNITUDE: 0.000
+  MAGNITUDE: 0.00
   IN_FEATS: [64, 128, 128, 512]
 
 COMMENTS:

@@ -9,14 +9,14 @@ from torchvision import transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from PIL import Image, ImageFile
+import wandb
+from torch.profiler import profile, record_function, ProfilerActivity
 
 from loaders import select_ood_testset, select_classifier, select_dataset, select_ood_transform, select_transform
 from utils import *
 from configs import get_cfg_defaults
 from models import *
 from losses import FlowConLoss
-from tester import validate_results
-
 
 
 def warmup_learning_rate(cfg, epoch, batch_id, total_batches, optimizer):
@@ -116,27 +116,38 @@ if __name__ == "__main__":
   print("GPU: ", torch.cuda.is_available())
 
   # SET TENSORBOARD PATH
-  writer = SummaryWriter(f'./runs/{args.config}_flow')
+  # writer = SummaryWriter(f'./runs/{args.config}_flow')
+  writer = wandb.init(project=f"{args.config}-flow")
+  
+  # Defining the profiler
+  # prof = torch.profiler.profile(
+  #         activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA],
+  #         #schedule=torch.profiler.schedule(wait=1, warmup=1, active=1),
+  #         on_trace_ready=torch.profiler.tensorboard_trace_handler('./logs/{args.config}_flow'),
+  #         record_shapes=True,
+  #         profile_memory=False,
+  #         with_stack=False,
+  #         with_flops=False,
+  #         with_modules=False
+  # )
+    
 
   # LOAD CONFIGURATION
   cfg = get_cfg_defaults()
   cfg.merge_from_file(config_path)
   # cfg.freeze()
-  cfg.TRAINING.BATCH=64
   print(cfg)
   
+  writer.config.update(cfg)
   
   pretrained, _ = select_classifier(cfg, cfg.DATASET.IN_DIST, cfg.TRAINING.PRETRAINED, cfg.DATASET.N_CLASS)
 
   # PRETRAINED MODEL
   if cfg.TRAINING.PRETRAINED in ["resnet18", 'resnet101', 'effnet']:
-    # pretrained = ResNet18(1, cfg.DATASET.N_CLASS)
     checkpoint = torch.load(f'./checkpoints/classifiers/{cfg.DATASET.IN_DIST}_{cfg.TRAINING.PRETRAINED}.pt', map_location=device)
-    pretrained = pretrained.to(device)
   elif cfg.TRAINING.PRETRAINED == "wideresnet":
-    # pretrained = Wide_ResNet(40, 2, 0.3, 1)
     checkpoint = torch.load(f'./checkpoints/classifiers/{cfg.DATASET.IN_DIST}_{cfg.TRAINING.PRETRAINED}_40_2.pt', map_location=device)
-    pretrained = pretrained.to(device)
+  pretrained = pretrained.to(device)
 
   if cfg.DATASET.IN_DIST in ['raf', 'aff']:
     sd = {k: v for k, v in checkpoint['net_state_dict'].items()}
@@ -171,13 +182,18 @@ if __name__ == "__main__":
   test_set = select_dataset(cfg, cfg.DATASET.IN_DIST, test_transform, train=False)
   test_loader = DataLoader(test_set, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
 
+ 
   best_loss = 1e6
   pbar = tqdm(range(cfg.TRAINING.ITER))
+  # prof.start()
   for epoch in pbar:
+    # Train and Validate
     train_con_loss, train_nll_loss, _ = train(cfg, train_loader, epoch, pretrained, model, criterion, optimizer, device)
     with torch.no_grad():
       val_con_loss, val_nll_loss, log_p = validate(cfg, test_loader, pretrained, model, criterion, device)
+    # prof.step()
 
+    # Save best
     if val_con_loss+val_nll_loss < best_loss:
       best_loss = val_con_loss+val_nll_loss
       best_epoch = epoch
@@ -189,17 +205,37 @@ if __name__ == "__main__":
             }
       torch.save(ckp_dict, f"{ckp_path}/{args.config}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow.pt")
     
-    # if epoch % 20 == 0:
-    #   validate_results(cfg, args, epoch, model, pretrained, device, criterion, train_loader, test_loader)
+    if epoch % 200 == 0:
+      ckp_dict = {
+                'state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'args': cfg,
+                'best_epoch': best_epoch
+            }
+      epoch_ckp_dir = f"{ckp_path}/{args.config}"
+      mkdir(epoch_ckp_dir)
+      torch.save(ckp_dict, f"{epoch_ckp_dir}/{args.config}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_{epoch}.pt")
 
+    
+    # Display Metrics
     pbar.set_description(
       f"Train Con Loss: {round(train_con_loss, 4)}; Train NLL Loss: {round(train_nll_loss, 4)};"\
       f"Val Con Loss: {round(val_con_loss, 4)}; Val NLL Loss: {round(val_nll_loss, 4)};"\
       f"Best Epoch: {best_epoch}; Log prob: {round(log_p.item(), 4)}; "\
     )
 
-    writer.add_scalar("Train/NLL", round(train_nll_loss, 4), epoch)
-    writer.add_scalar("Train/Con", round(train_con_loss, 4), epoch)
-    writer.add_scalar("Val/NLL", round(val_nll_loss, 4), epoch)
-    writer.add_scalar("Val/Con", round(val_con_loss, 4), epoch)
-  ic(best_epoch)
+    # Log Metrics
+    writer.log({
+      "epoch": epoch, 
+      "Train/NLL": round(train_nll_loss, 4), 
+      "Train/Con": round(train_con_loss, 4),
+      "Val/NLL": round(val_nll_loss, 4), 
+      "Val/Con": round(val_con_loss, 4)
+    })
+    # writer.add_scalar("Train/NLL", round(train_nll_loss, 4), epoch)
+    # writer.add_scalar("Train/Con", round(train_con_loss, 4), epoch)
+    # writer.add_scalar("Val/NLL", round(val_nll_loss, 4), epoch)
+    # writer.add_scalar("Val/Con", round(val_con_loss, 4), epoch)
+  
+  # prof.stop()
+  # print(prof.key_averages().table(sort_by="self_cuda_time_total"))

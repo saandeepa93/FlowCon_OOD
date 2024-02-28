@@ -111,6 +111,11 @@ MAHA
 git remote set-url origin saandeepa.93@gmail.com:saandeepa93/FlowCon_OOD.git
 ssh -vT saandeepa.93@gmail.com
 
+ssh-keygen -t ed25519 -C "saandeepa.93@gmail.com"
 
 
 SHA256:ggc57KKdIdFJSUm8Ol7yuFyY8ZAoTrOJF6q9rKl/W4o
+
+
+
+git remote set-url origin git@github.com:saandeepa93/FlowCon_OOD.git
