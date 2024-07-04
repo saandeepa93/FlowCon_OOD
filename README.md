@@ -13,12 +13,12 @@
 
 
 
-<!-- ### Method
+### Method
 ![main-method](figures/new_arch.png)
 
-### FAR-OOD likelihood plots when $D_{in}=CIFAR10$ on ResNet-18 and WideResNet models.
-![cifar-10RN](figures/cifar10_3.jpg)
-![cifar-10WRN](figures/cifar10_7.jpg) -->
+<!-- ### FAR-OOD likelihood plots when $D_{in}=CIFAR10$ on ResNet-18 and WideResNet models. -->
+<!-- ![cifar-10RN](figures/cifar10_3.jpg) -->
+<!-- ![cifar-10WRN](figures/cifar10_7.jpg) --> 
 
 <!-- 
 ### Adaptive mask visualizations from $SSv2$ (samples from $50th$ epoch)
