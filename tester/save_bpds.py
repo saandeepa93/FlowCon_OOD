@@ -139,6 +139,7 @@ def calc_scores_2(cfg1, args, loader, pretrained, flow, cls, mu, log_sd, criteri
       z, n_mu, n_log_sd, sdlj, _, _ = flow(features)
       # _, score, _, _ = criterion.nllLoss(z, sdlj, n_mu, n_log_sd) # CIFAR10_4_WIDENET
       score, _, _, _ = criterion.nllLoss(z, sdlj, n_mu, n_log_sd) #CIFAR10_3_RESNET
+      score *= (log(2) * n_pixel)
       score = score.detach().cpu().tolist()
 
 
@@ -159,8 +160,8 @@ if __name__ == "__main__":
   
   db1 = args.config.split("_")[0]
   config_path1 = os.path.join(f"./configs/experiments/{db1}", f"{args.config}.yaml")
-  # ckp_path = os.path.join(f"./checkpoints/{db1}")
-  ckp_path = os.path.join(f"./checkpoints/{db1}/{args.config}")
+  ckp_path = os.path.join(f"./checkpoints/{db1}")
+  # ckp_path = os.path.join(f"./checkpoints/{db1}/{args.config}")
   
   device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
   torch.autograd.set_detect_anomaly(True)
@@ -219,8 +220,8 @@ if __name__ == "__main__":
   model = model.to(device)
 
   # FLOW MODEL
-  # flow_ckp = torch.load(f"{ckp_path}/{db1}_{cfg1.TRAINING.PRT_CONFIG}_{cfg1.TRAINING.PRETRAINED}_layer{cfg1.TRAINING.PRT_LAYER}_flow.pt", map_location=device)
-  flow_ckp = torch.load(f"{ckp_path}/{db1}_{cfg1.TRAINING.PRT_CONFIG}_{cfg1.TRAINING.PRETRAINED}_layer{cfg1.TRAINING.PRT_LAYER}_flow_600.pt", map_location=device)
+  flow_ckp = torch.load(f"{ckp_path}/{args.config}_{cfg1.TRAINING.PRETRAINED}_layer{cfg1.TRAINING.PRT_LAYER}_flow.pt", map_location=device)
+  # flow_ckp = torch.load(f"{ckp_path}/{db1}_{cfg1.TRAINING.PRT_CONFIG}_{cfg1.TRAINING.PRETRAINED}_layer{cfg1.TRAINING.PRT_LAYER}_flow_600.pt", map_location=device)
   sd = {k: v for k, v in flow_ckp['state_dict'].items()}
   state = model.state_dict()
   state.update(sd)
@@ -252,9 +253,8 @@ if __name__ == "__main__":
   # np.save(f"{save_path}/{args.config}_train.npy", bpds_train)
   np.save(f"{save_path}/{args.config}_test", bpds_test)
   
-  ood_datasets = ['lsun-r', 'lsun-c', 'isun', 'svhn', 'textures', 'places365', 'raf']
-  # ood_datasets = ['lsun-r', 'lsun-c', 'isun', 'svhn', 'textures', 'places365']
-  # ood_datasets = ['raf']
+  ood_datasets = ['lsun-r', 'lsun-c', 'isun', 'svhn', 'textures', 'places365', 'cifar10']
+  # ood_datasets = ['cifar100']
   for ood_ds in ood_datasets:
     if ood_ds == db1:
       continue

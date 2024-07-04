@@ -195,92 +195,85 @@ if __name__ == "__main__":
 
   loss_criterion = nn.CrossEntropyLoss()
 
-  # magnitude = [0, 0.0005, 0.001, 0.0014, 0.002, 0.0024, 0.005, 0.01, 0.05, 0.1, 0.2]
-  # magnitude = list(np.linspace(0.0024, 0.005, 50, dtype=np.float32))
-  magnitude = [cfg.TEST.MAGNITUDE]
-  for ctr2, mag in enumerate(magnitude):
-    ic(mag)
-    cfg.TEST.MAGNITUDE = float(mag)
-    result[str(mag)] = []
+  result[str(cfg.TEST.MAGNITUDE)] = []
+  scores_in_layer = []
+  scores_ood_layer = []
+  avg_result_dict = {"rocauc": 0, "aupr_success": 0, "aupr_error": 0, "fpr": 0}
+  layers = [cfg.TRAINING.PRT_LAYER]
+  for ctr, layer in enumerate(layers):
+    cfg.FLOW.IN_FEAT = cfg.TEST.IN_FEATS[layer-1]
+    cfg.TRAINING.PRT_LAYER = layer
+    model = LatentModel(cfg)
+    model = model.to(device)
+
+    # FLOW MODEL
+    flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow.pt", map_location=device)
+    # flow_ckp = torch.load(f"{ckp_path}/{args.config}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_200.pt", map_location=device)
+    # flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_600.pt", map_location=device)
+    sd = {k: v for k, v in flow_ckp['state_dict'].items()}
+    state = model.state_dict()
+    state.update(sd)
+    model.load_state_dict(state, strict=True)
+    print("Total Trainable Parameters of flow model: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+
+    dist_dir = f"./data/distributions/{args.config}"
+    mkdir(dist_dir)
+    dist_path = os.path.join(dist_dir, f"layer{cfg.TRAINING.PRT_LAYER}")
+    mkdir(dist_path)
+
     
-    scores_in_layer = []
-    scores_ood_layer = []
-    avg_result_dict = {"rocauc": 0, "aupr_success": 0, "aupr_error": 0, "fpr": 0}
-    layers = [cfg.TRAINING.PRT_LAYER]
-    for ctr, layer in enumerate(layers):
-      cfg.FLOW.IN_FEAT = cfg.TEST.IN_FEATS[layer-1]
-      cfg.TRAINING.PRT_LAYER = layer
-      model = LatentModel(cfg)
-      model = model.to(device)
+    # load params
+    mu = torch.load(os.path.join(dist_path, "mu.pt"), map_location=device)
+    log_sd = torch.load(os.path.join(dist_path, "log_sd.pt"), map_location=device)
+    mu =  torch.stack(mu)
+    log_sd =  torch.stack(log_sd)
 
-      # FLOW MODEL
-      flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow.pt", map_location=device)
-      # flow_ckp = torch.load(f"{ckp_path}/{args.config}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_200.pt", map_location=device)
-      # flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_600.pt", map_location=device)
-      sd = {k: v for k, v in flow_ckp['state_dict'].items()}
-      state = model.state_dict()
-      state.update(sd)
-      model.load_state_dict(state, strict=True)
-      print("Total Trainable Parameters of flow model: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+    thresh_dict = {"aff_4": -2.796689883709161, "aff_5": -11.944983131679866, "raf_4": -2.917621004939253, "raf_5": -8.999182610697972}
+    
+    for ood_ds in ood_datasets:
+      if cfg.DATASET.IN_DIST == ood_ds:
+        continue
+      print(f"Running {ood_ds}")
+      if cfg.TEST.SCORE:
+        ood_transform = select_ood_transform(cfg, ood_ds, cfg.DATASET.IN_DIST)
+        ood_dataset = select_ood_testset(cfg, ood_ds, ood_transform)
+        ood_loader = DataLoader(ood_dataset, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
 
-      dist_dir = f"./data/distributions/{args.config}"
-      mkdir(dist_dir)
-      dist_path = os.path.join(dist_dir, f"layer{cfg.TRAINING.PRT_LAYER}")
-      mkdir(dist_path)
+        num_ood = min(orig_num_ood, len(ood_dataset))
+        
+        print("Calculating Scores...")
+        labels_all, preds_all, scores_all = calc_scores_2(cfg, args, ood_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
+        ood_labels = np.zeros(len(scores_all))
+        scores_all = np.array(scores_all)
 
-      
-      # load params
-      mu = torch.load(os.path.join(dist_path, "mu.pt"), map_location=device)
-      log_sd = torch.load(os.path.join(dist_path, "log_sd.pt"), map_location=device)
-      mu =  torch.stack(mu)
-      log_sd =  torch.stack(log_sd)
+        thresh = scores_all.mean()#thresh_dict[args.config]
+        id_ind = [i for i, s in enumerate(scores_all) if s < thresh]
+        # id_ind = [i for i, s in enumerate(scores_all) if s > thresh]
+        # id_ind = [i for i, s in enumerate(scores_all)]
+        gt = [labels_all[i] for i in id_ind]
+        pr = [preds_all[i] for i in id_ind]
 
-      thresh_dict = {"aff_4": -2.796689883709161, "aff_5": -11.944983131679866, "raf_4": -2.917621004939253, "raf_5": -8.999182610697972}
-      
-      for ood_ds in ood_datasets:
-        if cfg.DATASET.IN_DIST == ood_ds:
-          continue
-        print(f"Running {ood_ds}")
-        if cfg.TEST.SCORE:
-          ood_transform = select_ood_transform(cfg, ood_ds, cfg.DATASET.IN_DIST)
-          ood_dataset = select_ood_testset(cfg, ood_ds, ood_transform)
-          ood_loader = DataLoader(ood_dataset, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
-
-          num_ood = min(orig_num_ood, len(ood_dataset))
-          
-          print("Calculating Scores...")
-          labels_all, preds_all, scores_all = calc_scores_2(cfg, args, ood_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
-          ood_labels = np.zeros(len(scores_all))
-          scores_all = np.array(scores_all)
-
-          thresh = scores_all.mean()#thresh_dict[args.config]
-          id_ind = [i for i, s in enumerate(scores_all) if s < thresh]
-          # id_ind = [i for i, s in enumerate(scores_all) if s > thresh]
-          # id_ind = [i for i, s in enumerate(scores_all)]
-          gt = [labels_all[i] for i in id_ind]
-          pr = [preds_all[i] for i in id_ind]
-
-          if ood_ds == "raf":
-            ad_prs = []
-            pr_dict = {0:6, 2:4, 3:0, 4:1, 5:2, 6:5}
-            for p in pr:
-              if p in [1, 7]:
-                ad_prs.append(3)
-              else:
-                ad_prs.append(pr_dict[p])
-            print(len(gt), len(ad_prs))
-            print(accuracy_score(gt, ad_prs))
-          elif ood_ds == "aff":
-            ad_prs = []
-            ad_gt = [i if i <=6 else 1 for i in gt ]
-
-            pr_dict = {0:3, 1: 4, 2:5, 3:1, 4:2, 5:6, 6:0}
-            for p in pr:
+        if ood_ds == "raf":
+          ad_prs = []
+          pr_dict = {0:6, 2:4, 3:0, 4:1, 5:2, 6:5}
+          for p in pr:
+            if p in [1, 7]:
+              ad_prs.append(3)
+            else:
               ad_prs.append(pr_dict[p])
+          print(len(gt), len(ad_prs))
+          print(accuracy_score(gt, ad_prs))
+        elif ood_ds == "aff":
+          ad_prs = []
+          ad_gt = [i if i <=6 else 1 for i in gt ]
 
-            print(len(gt), len(ad_prs))
-            print(accuracy_score(ad_gt, ad_prs))
-          e()
+          pr_dict = {0:3, 1: 4, 2:5, 3:1, 4:2, 5:6, 6:0}
+          for p in pr:
+            ad_prs.append(pr_dict[p])
+
+          print(len(gt), len(ad_prs))
+          print(accuracy_score(ad_gt, ad_prs))
+        e()
 
 
 

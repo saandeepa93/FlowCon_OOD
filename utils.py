@@ -18,14 +18,9 @@ from sklearn.metrics import roc_auc_score, average_precision_score, roc_curve, p
 
 import matplotlib.pyplot as plt
 
-
-
-
-
-
-
-
-
+print(px.colors.qualitative.Plotly)
+colors_all = px.colors.sample_colorscale('Viridis', np.linspace(0, 1, 101))
+colors_all[100] = 'rgb(0, 0, 0)'
 
 def get_curve(known, novel, stype):
     tp, fp = dict(), dict()
@@ -247,47 +242,78 @@ def get_metrics_ood(label, score, invert_score=False):
 
 
 def plot_umap(cfg, X_lst_un, y_lst, name, dim, mode, labels_in_ood=None):
+  fig = px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
+  fig.write_image("./data/random.pdf")
+  import time
+  time.sleep(2)
+    
+  id_list = list(np.arange(0, cfg.DATASET.N_CLASS))
+  id_list = [str(k) for k in id_list]
   b = X_lst_un.size(0)
   X_lst = UMAP(n_components=dim, random_state=0, init='random').fit_transform(X_lst_un.view(b, -1))
 
   if labels_in_ood is None:
-    y_lst_label = [str(i) for i in y_lst.detach().numpy()]
+    y_lst_label = [str(i)  for i in y_lst.detach().numpy()]
   else:
-     y_lst_label = [str(i) for i in labels_in_ood.detach().numpy()]
+     y_lst_label = [str(i) for i in labels_in_ood.detach().numpy() ]
+    #  y_lst_label = [() if i in id_list else "OOD" for i in labels_in_ood.detach().numpy() ]
 
-
+    
   if dim == 3:
     df = pd.DataFrame(X_lst, columns=["x", "y", "z"])
   else:
     df = pd.DataFrame(X_lst, columns=["x", "y"])
   df_color = pd.DataFrame(y_lst_label, columns=["class"])
+  df['legend_group'] = df_color['class'].apply(lambda x: 'ID' if x in id_list else "OOD")
+  print(df_color.head())
+  # e()
   df = df.join(df_color)
   if dim == 3:
     fig = px.scatter_3d(df, x='x', y='y', z='z',color='class', title=f"{name}", \
      )
   else:
     fig = px.scatter(df, x='x', y='y',color='class', title=f"{name}", \
+                    #  color_discrete_sequence=colors_all
     )
   
-  fig.update_traces(marker=dict(size=7))
-  fig.update_layout(title=None,  margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
+#   fig.update_traces(marker=dict(size=8))
+  # fig.update_traces(marker=dict(size=12, line=dict(width=2)))
+  # fig.update_traces(marker=dict(size=[12 if c == '100' else 8 for c in df['class']]))
+  fig.for_each_trace(lambda t: t.update(showlegend=False) if t.name in id_list else t.update(name='OOD'))
+  fig.update_layout(title="CV vs Entropy",  margin=dict(l=0, r=0, t=0, b=0), showlegend=True)
   fig.update_layout(
       legend=dict(
           yanchor="top",
           y=0.99,
           xanchor="right",
-          x=0.90,
+          x=0.99,
           font = dict(
               family="Courier",
-              size=24,
+              size=36,
               color='black'
           ),
             
         )
       )
+  fig.update_xaxes(showgrid=True)
+  fig.update_yaxes(showgrid=True)
+  
+
+
+  # REMOVE TICKS
+  fig.update_layout(
+      xaxis=dict(
+          visible=False,
+          showticklabels=False
+      ),
+      yaxis=dict(
+          visible=False,
+          showticklabels=False
+      )
+  )
   
   dest_path = os.path.join("./data/umaps/", name)
-
   mkdir(dest_path)
-  fig.write_html(os.path.join(dest_path, f"{dim}d_{mode}_new.html"))
-  fig.write_image(os.path.join(dest_path, f"{dim}d_{mode}_new.png"), width=1745, height=840, scale=1)
+  fig.write_html(os.path.join(dest_path, f"{dim}d_{mode}.html"))
+  fig.write_image(os.path.join(dest_path, f"{dim}d_{mode}.jpeg"), width=1080, height=1080, scale=1)
+  fig.write_image(os.path.join(dest_path, f"{dim}d_{mode}.pdf"))

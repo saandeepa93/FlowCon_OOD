@@ -1,121 +1,123 @@
-1. Follow Heatmap experiment framework
-2. Explain why FlowCon is better? Density based approach and class specific
-3. Penultimate layer only
-4. RAF <-> AFF evaluation. What is OOD in face expression?
-5. Timeline
+# [ECCV'24] FlowCon: Out-of-Distribution Detection using Flow-Based Contrastive Learning
+
+<!-- :book: Paper: [`ECCV'24`]Bandara_AdaMAE_Adaptive_Masking_for_Efficient_Spatiotemporal_Learning_With_Masked_Autoencoders_CVPR_2023_paper.pdf) and [``arXiv``] -->
+
+### :bulb: Contributions:
+
+![main-method](figures/intuition_orig.png)
+- A new density-based OOD detection technique called FlowCon is proposed. We introduce a new loss function $L_{con}$ which contrastively learns class separability in the probability distribution space. This learning occurs without any external OOD dataset and it operates on fixed classifiers.
+
+- The proposed method is evaluated on various metrics - FPR95, AUROC, AUPR-Success, and AUPR-Error and compared against state of the art. We observe that FlowCon is competitive or outperforms most methods under different OOD conditions. Additionally, FlowCon is stable even for a large number of classes and shows improvement for high-dimensional features
+
+- Histogram plots are detailed along with unified manifold approximations (UMAP) embeddings of the trained FlowCon model to respectively showcase it’s OOD detection and class-preserving capabilities. We also show FlowCon’s discriminative capabilities.
 
 
 
+<!-- ### Method
+![main-method](figures/new_arch.png)
 
+### FAR-OOD likelihood plots when $D_{in}=CIFAR10$ on ResNet-18 and WideResNet models.
+![cifar-10RN](figures/cifar10_3.jpg)
+![cifar-10WRN](figures/cifar10_7.jpg) -->
 
-. Literature -> Density based latest on CVPR2020
-  + [A Simple Unified Framework for Detecting Out-of-Distribution](https://proceedings.neurips.cc/paper/2018/file/abdeb6f575ac5c6676b747bca8d09cc2-Paper.pdf)
+<!-- 
+### Adaptive mask visualizations from $SSv2$ (samples from $50th$ epoch)
 
+| &nbsp; Video &nbsp;  | Pred. &nbsp;| &nbsp; Error &nbsp; | &nbsp; &nbsp; CAT &nbsp; | Mask | &nbsp; |  Video  | Pred. &nbsp;| &nbsp; Error &nbsp; | &nbsp; &nbsp; CAT  &nbsp; | Mask &nbsp; |
+| ----------- | --------- | --------- | --------- | --------- |--|--------- | --------- | --------- | --------- | --------- |
 
-************************
-  + [Boosting Out-of-distribution Detection with
-Typical Features](https://proceedings.neurips.cc/paper_files/paper/2022/file/82b0c1b954b6ef9f3cfb664a82b201bb-Paper-Conference.pdf)
+<p float="left">
+  <img src="figs/ssv2-mask-vis-1.gif" width="410" />
+  <img src="figs/ssv2-mask-vis-2.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/ssv2-mask-vis-3.gif" width="410" />
+  <img src="figs/ssv2-mask-vis-4.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/ssv2-mask-vis-5.gif" width="410" />
+  <img src="figs/ssv2-mask-vis-6.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/ssv2-mask-vis-7.gif" width="410" />
+  <img src="figs/ssv2-mask-vis-8.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/ssv2-mask-vis-9.gif" width="410" />
+  <img src="figs/ssv2-mask-vis-10.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/ssv2-mask-vis-11.gif" width="410" />
+  <img src="figs/ssv2-mask-vis-12.gif" width="410" /> 
+</p>
 
-  + [Heatmap-based Out-of-Distribution Detection](https://openaccess.thecvf.com/content/WACV2023/papers/Hornauer_Heatmap-Based_Out-of-Distribution_Detection_WACV_2023_paper.pdf)
-  + [Beyond AUROC & co. for evaluating
-out-of-distribution detection performance](https://openaccess.thecvf.com/content/CVPR2023W/SAIAD/papers/Humblot-Renaux_Beyond_AUROC__Co._for_Evaluating_Out-of-Distribution_Detection_Performance_CVPRW_2023_paper.pdf)
+### Adaptive mask visualizations from $K400$ (samples from $50th$ epoch):
 
-  + [Out-of-Distribution Detection with Deep Nearest Neighbors](https://proceedings.mlr.press/v162/sun22d/sun22d.pdf)
+| &nbsp; Video &nbsp;  | Pred. &nbsp;| &nbsp; Error &nbsp; | &nbsp; &nbsp; CAT &nbsp; | Mask | &nbsp; |  Video  | Pred. &nbsp;| &nbsp; Error &nbsp; | &nbsp; &nbsp; CAT  &nbsp; | Mask &nbsp; |
+| ----------- | --------- | --------- | --------- | --------- |--|--------- | --------- | --------- | --------- | --------- |
 
-python OOD_Generate_Mahalanobis_exp2.py --dataset raf --net_type resnet --gpu 1 --num_classes 7 --batch 64 --net_c 2
-python OOD_Regression_Mahalanobis.py --net_type resnet
+<p float="left">
+  <img src="figs/k400-mask-vis-1.gif" width="410" />
+  <img src="figs/k400-mask-vis-2.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/k400-mask-vis-3.gif" width="410" />
+  <img src="figs/k400-mask-vis-4.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/k400-mask-vis-5.gif" width="410" />
+  <img src="figs/k400-mask-vis-6.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/k400-mask-vis-7.gif" width="410" />
+  <img src="figs/k400-mask-vis-8.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/k400-mask-vis-9.gif" width="410" />
+  <img src="figs/k400-mask-vis-10.gif" width="410" /> 
+</p>
+<p float="left">
+  <img src="figs/k400-mask-vis-11.gif" width="410" />
+  <img src="figs/k400-mask-vis-12.gif" width="410" /> 
+</p>
 
+### A comparision
 
-out_distribution: svhn
- TNR    AUROC  DTACC  AUIN   AUOUT
- 93.82  98.38  94.92  93.02  99.79
-Input noise: Mahalanobis_0.001
+Comparison of our adaptive masking with existing random *patch*, *tube*, and *frame* masking for masking ratio of 80\%.} Our adaptive masking approach selects more tokens from the regions with high spatiotemporal information while a small number of tokens from the background.
 
-out_distribution: imagenet_resize
- TNR    AUROC  DTACC  AUIN   AUOUT
- 93.34  98.33  94.31  95.42  99.49
-Input noise: Mahalanobis_0.001
+![mask-type-comp](figs/adamae-mask-types.jpeg)
 
-out_distribution: lsun_resize
- TNR    AUROC  DTACC  AUIN   AUOUT
- 95.37  98.57  95.39  96.80  99.49
-Input noise: Mahalanobis_0.001
+## Ablation experiments on SSv2 dataset:
 
-###############################
-python OOD_Generate_Mahalanobis_exp2.py --dataset raf --net_type effnet --gpu 1 --num_classes 7 --batch 64 --net_c 1
+We use ViT-Base as the backbone for all experiments. MHA $(D=2, d=384)$ denotes our adaptive token sampling network with a depth of two and embedding dimension of $384$.  All pre-trained models are evaluated based on the evaluation protocol described in Sec. 4. The default choice of our *Ada*MAE is highlighted in gray color. The GPU memory consumption is reported for a batch size of 16 on a single GPU.
 
+![ssv2-ablations](figs/adamae-ablations.png)
 
-out_distribution: svhn
- TNR    AUROC  DTACC  AUIN   AUOUT 
-100.00 100.00  99.80  99.95 100.00
-Input noise: Mahalanobis_0.0
+# Pre-training *Ada*MAE & fine-tuning:
 
-out_distribution: imagenet_resize
- TNR    AUROC  DTACC  AUIN   AUOUT 
- 99.89  99.86  98.71  99.60  99.96
-Input noise: Mahalanobis_0.0
+- We closely follow the [VideoMAE](https://github.com/MCG-NJU/VideoMAE.git) pre-trainig receipy, but now with our *adaptive masking* instead of *tube masking*. To pre-train *Ada*MAE, please follow the steps in [``DATASET.md``](readme/DATASET.md), [``PRETRAIN.md``](readme/PRETRAIN.md).
 
-out_distribution: lsun_resize
- TNR    AUROC  DTACC  AUIN   AUOUT 
- 99.94  99.87  99.00  99.65  99.96
+- To check the performance of pre-trained *Ada*MAE please follow the steps in [``DATASET.md``](readme/DATASET.md) and [``FINETUNE.md``](readme/FINETUNE.md).
 
-out_distribution: cifar10
- TNR    AUROC  DTACC  AUIN   AUOUT 
- 99.72  99.58  98.08  98.28  99.88
+- To setup the conda environment, please refer [``FINETUNE.md``](readme/INSTALL.md).
 
+# Pre-trained model weights
 
+- Download the pre-trained model weights for SSv2 and K400 datasets [``here``](https://github.com/wgcban/adamae/releases/tag/v1).
 
-
-
-
-
-
-
-
-  {'0.002': [{'lsun_resize': {'AUIN': 0.9159968772185179,
-                                         'AUOUT': 0.9718827769132757,
-                                         'AUROC': 0.9412050521512386,
-                                         'DTACC': 0.8951655801825293,
-                                         'TNR': 0.5205}},
-                        {'imagenet_resize': {'AUIN': 0.7446115293245945,
-                                             'AUOUT': 0.924432614947508,
-                                             'AUROC': 0.8266008474576271,
-                                             'DTACC': 0.7656550195567144,
-                                             'TNR': 0.26639999999999997}},
-                        {'svhn': {'AUIN': 0.3521282700002417,
-                                  'AUOUT': 0.9356399479733257,
-                                  'AUROC': 0.6517361993142128,
-                                  'DTACC': 0.6172117217681737,
-                                  'TNR': 0.15550092194222498}}]}
-
-
-MAHA
-    {'lsun_resize': {'AUIN': 0.14683431702363461,
-                    'AUOUT': 0.634156268287239,
-                    'AUROC': 0.2199678617992177,
-                    'DTACC': 0.5001370273794004,
-                    'TNR': 0.016700000000000048}}
-{'imagenet_resize': {'AUIN': 0.17565336244423915,
-                  'AUOUT': 0.7322783484630648,
-                  'AUROC': 0.37478556062581486,
-                  'DTACC': 0.5123157105606259,
-                  'TNR': 0.06899999999999995}},
-  {'svhn': {'AUIN': 0.1357192935527043,
-            'AUOUT': 0.9339393085827903,
-            'AUROC': 0.6118344015869747,
-            'DTACC': 0.5894820856328467,
-            'TNR': 0.1849646588813768}},
+## Acknowledgement:
+Our AdaMAE codebase is based on the implementation of VideoMAE paper. We thank the authors of the [VideoMAE](https://github.com/MCG-NJU/VideoMAE.git) for making their code available to the public.
 
 
 
-git remote set-url origin saandeepa.93@gmail.com:saandeepa93/FlowCon_OOD.git
-ssh -vT saandeepa.93@gmail.com
-
-ssh-keygen -t ed25519 -C "saandeepa.93@gmail.com"
-
-
-SHA256:ggc57KKdIdFJSUm8Ol7yuFyY8ZAoTrOJF6q9rKl/W4o
-
-
-
-git remote set-url origin git@github.com:saandeepa93/FlowCon_OOD.git
+## Citation:
+```
+@InProceedings{Bandara_2023_CVPR,
+    author    = {Bandara, Wele Gedara Chaminda and Patel, Naman and Gholami, Ali and Nikkhah, Mehdi and Agrawal, Motilal and Patel, Vishal M.},
+    title     = {AdaMAE: Adaptive Masking for Efficient Spatiotemporal Learning With Masked Autoencoders},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+    month     = {June},
+    year      = {2023},
+    pages     = {14507-14517}
+}
+``` -->

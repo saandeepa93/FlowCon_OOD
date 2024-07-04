@@ -68,7 +68,8 @@ def calc_emp_params(cfg, args, loader, pretrained, flow, dist_dir, device, label
   labels_all = torch.cat(labels_all, dim=0)
   z = torch.cat(z_all, dim=0)
 
-  # plot_umap(cfg, z.cpu(), labels_all.cpu(), f"{args.config}", 2, "in_ood", labels_in_ood)
+  plot_umap(cfg, z.cpu(), labels_all.cpu(), f"{args.config}", 2, "in_ood", labels_in_ood)
+  e()
 
   mu_k, std_k , z_k= [], [], []
   for cls in range(cfg.DATASET.N_CLASS):
@@ -154,20 +155,13 @@ def calc_scores_2(cfg, args, loader, pretrained, flow, cls, mu, log_sd, criterio
       # score = torch.max(log_probs, dim=-1)[0].cpu().tolist()
       
       z, n_mu, n_log_sd, sdlj, _, _ = flow(features)
-      # _, score, _, _ = criterion.nllLoss(z, sdlj, n_mu, n_log_sd) # CIFAR10_4_WIDENET
-      score, _, _, _ = criterion.nllLoss(z, sdlj, n_mu, n_log_sd) #CIFAR10_3_RESNET
-
-      if flg:
-        ic(score.size(), label.size(), true_label.size(), len(fname))
-        e()
+      if cfg.TRAINING.PRETRAINED == "wideresnet":
+        _, score, _, _ = criterion.nllLoss(z, sdlj, n_mu, n_log_sd) # CIFAR10_4_WIDENET
+      else:
+        score, _, _, _ = criterion.nllLoss(z, sdlj, n_mu, n_log_sd) #CIFAR10_3_RESNET
       score = score.detach().cpu().tolist()
 
-
-
       scores_all += score
-      # if flg:
-      #   ic(score)
-      #   e()
 
   return scores_all
 
@@ -278,8 +272,8 @@ if __name__ == "__main__":
   test_loader = DataLoader(test_set, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
 
 
-  # ood_datasets = ['lsun-r', 'lsun-c', 'isun', 'svhn', 'textures', 'places365']
-  ood_datasets = ['cifar10']
+  ood_datasets = ['lsun-r', 'lsun-c', 'isun', 'svhn', 'textures', 'places365']
+  # ood_datasets = ['cifar10']
   result = {}
 
   criterion = FlowConLoss(cfg, device)
@@ -306,8 +300,8 @@ if __name__ == "__main__":
       model = model.to(device)
 
       # FLOW MODEL
-      flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow.pt", map_location=device)
-      # flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_200.pt", map_location=device)
+      flow_ckp = torch.load(f"{ckp_path}/{args.config}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow.pt", map_location=device)
+      # flow_ckp = torch.load(f"{ckp_path}/{args.config}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow_200.pt", map_location=device)
       sd = {k: v for k, v in flow_ckp['state_dict'].items()}
       state = model.state_dict()
       state.update(sd)
@@ -320,17 +314,19 @@ if __name__ == "__main__":
       mkdir(dist_path)
 
       
-      if cfg.TEST.EMP_PARAMS:
-        if ctr == 0 and ctr2==0:
-          print("Saving params...")
-          with torch.no_grad():
-            calc_emp_params(cfg, args, train_loader, pretrained, model, dist_path, device)
+      # if cfg.TEST.EMP_PARAMS:
+      #   if ctr == 0 and ctr2==0:
+      #     print("Saving params...")
+      #     with torch.no_grad():
+      #       calc_emp_params(cfg, args, train_loader, pretrained, model, dist_path, device)
       
       # load params
       mu = torch.load(os.path.join(dist_path, "mu.pt"), map_location=device)
       log_sd = torch.load(os.path.join(dist_path, "log_sd.pt"), map_location=device)
       mu =  torch.stack(mu)
       log_sd =  torch.stack(log_sd)
+      ic(log_sd.mean(1).exp())
+      e()
       
       scores_in = calc_scores_2(cfg, args, test_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
       # with torch.no_grad():
@@ -350,13 +346,19 @@ if __name__ == "__main__":
           ood_loader = DataLoader(ood_dataset, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
 
           num_ood = min(orig_num_ood, len(ood_dataset))
+
+          subset_dataset_ind = random.sample(list(np.arange(len(ood_dataset))), num_ood)
+          ood_dataset = torch.utils.data.Subset(ood_dataset, subset_dataset_ind)
+          
           # # UMAP EMBEDDING
-          # with torch.no_grad():
-          #   in_ood_sets = torch.utils.data.ConcatDataset([test_set, ood_dataset])
-          #   in_ood_loader = DataLoader(in_ood_sets, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
-          #   lables = torch.cat([torch.ones(len(test_set), dtype=torch.int8), torch.zeros(len(ood_dataset), dtype=torch.int8)], dim=0)
-          #   calc_emp_params(cfg, args, in_ood_loader, pretrained, model, dist_path, device, lables)
-          #   e()
+          with torch.no_grad():
+            in_ood_sets = torch.utils.data.ConcatDataset([test_set, ood_dataset])
+            in_ood_loader = DataLoader(in_ood_sets, batch_size=cfg.TRAINING.BATCH, shuffle=False, num_workers = cfg.DATASET.NUM_WORKERS)
+
+            lables = torch.cat([torch.tensor(test_set.targets), torch.ones(len(ood_dataset), dtype=torch.int8)*cfg.DATASET.N_CLASS], dim=0)
+            # lables = torch.cat([torch.ones(len(test_set), dtype=torch.int8), torch.zeros(len(ood_dataset), dtype=torch.int8)], dim=0)
+            calc_emp_params(cfg, args, in_ood_loader, pretrained, model, dist_path, device, lables)
+            e()
           
           print("Calculating Scores...")
           scores_out = calc_scores_2(cfg, args, ood_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
@@ -388,9 +390,9 @@ if __name__ == "__main__":
       # result[str(mag)].append(avg_result_dict)
   res_path = os.path.join("./data/results", f"{args.config}")
   mkdir(res_path)
-  with open(f'{res_path}/avg_{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_cov.json', 'w') as fp:
+  with open(f'{res_path}/avg_{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_vision.json', 'w') as fp:
     json.dump(avg_result_dict, fp, indent=4)
-  with open(f'{res_path}/ds_{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_cov.json', 'w') as fp:
+  with open(f'{res_path}/ds_{cfg.TRAINING.PRETRAINED}_{cfg.TRAINING.PRT_LAYER}_vision.json', 'w') as fp:
     json.dump(result_ds, fp, indent=4)
 
 

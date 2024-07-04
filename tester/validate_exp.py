@@ -13,9 +13,49 @@ from PIL import Image, ImageFile
 from loaders import select_ood_testset, select_classifier, select_dataset, select_ood_transform, select_transform
 from utils import seed_everything, get_args, get_metrics, mkdir
 from configs import get_cfg_defaults
-# from models import LatentModel, DenseNet3, ResNet34, EfficientNet
+from models import LatentModel
 from losses import FlowConLoss
 
+from einops import rearrange
+from math import log, pi
+
+def gaussian_log_p(x, mean, log_sd):
+  return -0.5 * log(2 * pi) - log_sd - 0.5 * (x - mean) ** 2 / torch.exp(2 * log_sd)
+
+
+def calc_likelihood(cfg, z, mu, log_sd, device, n_pixel, logdet):
+  b, _ = z.size()
+  z = rearrange(z, 'b d -> b 1 d')
+  mu = rearrange(mu, 'b d -> 1 b d').repeat(b, 1, 1)
+  log_sd = rearrange(log_sd, 'b d -> 1 b d').repeat(b, 1, 1)
+  
+  log_p_batch = gaussian_log_p(z, mu, log_sd)
+  log_p_all = log_p_batch.sum(dim=(2))
+  
+  log_p_all = (-log(cfg.FLOW.N_BINS) * n_pixel) + log_p_all + logdet.mean()
+  # ic(z.size(), mu.size(), log_sd.size(), log_p_batch.size(), log_p_all.size())
+  return (log_p_all/ (log(2) * n_pixel))
+
+def validate_flow(cfg, loader, pretrained, flow, mu, log_sd, device):
+  n_pixel = cfg.FLOW.IN_FEAT
+  y_pred = []
+  y_true = []
+  pretrained.eval()
+  cls.eval()
+  for b, (x, label) in enumerate(loader, 0):
+    x = x.to(device)
+    label = label.to(device)
+
+    features = pretrained.intermediate_forward(x, cfg.TRAINING.PRT_LAYER)
+    features = features.view(features.size(0), features.size(1), -1)
+    features = torch.mean(features, 2)
+    z, _, _, sdlj, _, _ = flow(features)
+    log_probs = calc_likelihood(cfg, z, mu, log_sd, device, n_pixel, sdlj)
+      
+    y_pred += torch.argmax(log_probs, dim=-1).cpu().tolist()
+    y_true += label.cpu().tolist()
+
+  return y_pred, y_true
 
 def validate(cfg, loader, pretrained, cls, device):
   y_pred = []
@@ -75,6 +115,22 @@ if __name__ == "__main__":
   
   pretrained = pretrained.to(device)
   cls = cls.to(device)
+  model = LatentModel(cfg)
+  model = model.to(device)
+
+  flow_ckp = torch.load(f"{ckp_path}/{db}_{cfg.TRAINING.PRT_CONFIG}_{cfg.TRAINING.PRETRAINED}_layer{cfg.TRAINING.PRT_LAYER}_flow.pt", map_location=device)
+  sd = {k: v for k, v in flow_ckp['state_dict'].items()}
+  state = model.state_dict()
+  state.update(sd)
+  model.load_state_dict(state, strict=True)
+
+  # load params 
+  dist_dir = f"./data/distributions/{args.config}"
+  dist_path = os.path.join(dist_dir, f"layer{cfg.TRAINING.PRT_LAYER}")
+  mu = torch.load(os.path.join(dist_path, "mu.pt"), map_location=device)
+  log_sd = torch.load(os.path.join(dist_path, "log_sd.pt"), map_location=device)
+  mu =  torch.stack(mu)
+  log_sd =  torch.stack(log_sd)
 
   # LOADER
   id_transform = select_ood_transform(cfg, cfg.DATASET.IN_DIST, cfg.DATASET.IN_DIST)
@@ -83,5 +139,8 @@ if __name__ == "__main__":
 
   with torch.no_grad():
     y_pred, y_true = validate(cfg, test_loader, pretrained, cls, device)
-  val_acc, val_err = get_metrics(y_true, y_pred)
-  ic(val_acc)
+    val_acc, val_err = get_metrics(y_true, y_pred)
+    ic(val_acc)
+    y_pred, y_true = validate_flow(cfg, test_loader, pretrained, model, mu, log_sd, device)
+    val_acc, val_err = get_metrics(y_true, y_pred)
+    ic(val_acc)

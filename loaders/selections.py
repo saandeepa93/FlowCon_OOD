@@ -235,6 +235,8 @@ def select_ood_testset(cfg, dataset, transform):
         ood_data = RafDb(cfg, "val", transform, transform)
     elif dataset == 'aff':
         ood_data = AffectDataset(cfg, "val", transform, transform)
+    elif dataset == "imagenet_resize":
+        ood_data = datasets.ImageFolder('/dataset/Imagenet_resize/', transform=transform)
     else:
         raise NotImplementedError
     return ood_data
@@ -279,7 +281,7 @@ def select_ood_transform(cfg, dataset, id_dataset='cifar10'):
                 transforms.CenterCrop(32),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        elif dataset in ['svhn', 'lsun-r', 'isun', 'cifar10', 'cifar100', 'tinyimages']:
+        elif dataset in ['svhn', 'lsun-r', 'isun', 'cifar10', 'cifar100', 'tinyimages', 'imagenet_resize']:
             transform = transforms.Compose([
                 transforms.Resize(cfg.DATASET.IMG_SIZE),
                 transforms.ToTensor(),
@@ -308,7 +310,7 @@ def select_ood_transform(cfg, dataset, id_dataset='cifar10'):
                     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225]) 
                 ])
-            elif dataset in ['svhn', 'lsun-r', 'isun', 'cifar10', 'cifar100', 'tinyimages', 'aff', 'raf']:
+            elif dataset in ['svhn', 'lsun-r', 'isun', 'cifar10', 'cifar100', 'tinyimages', 'aff', 'raf', 'imagenet_resize']:
                 transform = transforms.Compose([
                     transforms.Resize(cfg.DATASET.IMG_SIZE, interpolation=Image.BILINEAR),
                     transforms.ToTensor(), 

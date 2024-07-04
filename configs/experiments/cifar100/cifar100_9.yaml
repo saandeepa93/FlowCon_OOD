@@ -21,12 +21,12 @@ DATASET:
 TRAINING:
   ITER: 701
   BATCH: 64
-  LR: 1e-5
+  LR: 1e-4
   WT_DECAY: 1e-5
   MOMENTUM: 0.9
   DROPOUT: False
   PRETRAINED: wideresnet
-  PRT_CONFIG: 7
+  PRT_CONFIG: 9
   PRT_LAYER: 3
 
 LR:
@@ -39,7 +39,7 @@ LR:
   T_MAX: 100
 
 LOSS:
-  LMBDA_MIN: 0.3
+  LMBDA_MIN: 0.05
 
 TEST:
   EMP_PARAMS: True

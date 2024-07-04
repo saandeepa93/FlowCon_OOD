@@ -173,8 +173,8 @@ if __name__ == "__main__":
   cfg.TRAINING.BATCH=192
   print(cfg)
   
-  methods = ["react", "energy", "mahalanobis", "msp", "odin" ]
-  # methods = ["mahalanobis"]
+  # methods = ["react", "energy", "mahalanobis", "msp", "odin" ]
+  methods = ["react"]
   pretrained, cls = select_classifier(cfg, cfg.DATASET.IN_DIST, cfg.TRAINING.PRETRAINED, cfg.DATASET.N_CLASS)
 
   # PRETRAINED MODEL
@@ -237,7 +237,7 @@ if __name__ == "__main__":
         "precision": precision,
         "num_output": len(feature_list),
         "num_classes": cfg.DATASET.N_CLASS,
-        "magnitude": 0, 
+        "magnitude": 0.002, 
         "regressor": None
       }
 
@@ -247,7 +247,7 @@ if __name__ == "__main__":
       method_args = {
       "num_classes": cfg.DATASET.N_CLASS,
       "magnitude": .04, 
-      'temperature': 1.0,
+      'temperature': 1000.0,
       "regressor": None
       }
 
@@ -276,7 +276,7 @@ if __name__ == "__main__":
       def forward_threshold(inputs, model, cls, method):
           h_x = model(inputs)
           if method == "react":
-            h_x = h_x.clip(max=1.6)
+            h_x = h_x.clip(max=1.)
           else:
             h_x = h_x.clip(max=1e6)
           logits = cls(h_x)
