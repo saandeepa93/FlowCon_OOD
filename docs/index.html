@@ -52,7 +52,7 @@
   </div>
   <div class="navbar-menu">
     <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
-      <a class="navbar-item" href="https://keunhong.com">
+      <a class="navbar-item" href="https://saandeepa93.github.io/">
       <span class="icon">
           <i class="fas fa-home"></i>
       </span>
@@ -144,7 +144,7 @@
             Other methods focus on employing diverse OOD samples to learn discrepancies between ID and OOD. 
             These techniques, however, are typically dependent on the quality of the outlier samples assumed. 
             Density-based methods explicitly model class-conditioned distributions but this requires long training 
-            time or retraining the classifier. To tackle these issues, we introduce \textit{FlowCon}, a new density-based 
+            time or retraining the classifier. To tackle these issues, we introduce <i>FlowCon</i>, a new density-based 
             OOD detection technique. Our main innovation lies in efficiently combining the properties of normalizing 
             flow with supervised contrastive learning, ensuring robust representation learning with tractable density estimation. 
             Empirical evaluation shows the enhanced performance of our method across common vision datasets such as 
@@ -177,6 +177,101 @@
       </div>
     </div>
   </div>
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <ol>
+          <li>A new density-based OOD detection technique called FlowCon is proposed. 
+            We introduce a new loss function which contrastively learns class separability in the probability distribution space. 
+            This learning occurs without any external OOD dataset and it operates on fixed classifiers.</li>
+          <li>The proposed method is evaluated on various metrics - FPR95, AUROC, AUPR-Success, and AUPR-Error and 
+            compared against state of the art. We observe that FlowCon is competitive or outperforms most 
+            methods under different OOD conditions. Additionally, FlowCon is stable even for a large number of classes
+             and shows improvement for high-dimensional features.</li>
+          <li>Histogram plots are detailed along with unified manifold approximations (UMAP) embeddings 
+            of the trained FlowCon model to respectively showcase it's OOD detection and class-preserving capabilities. 
+            We also show FlowCon's discriminative capabilities.</li>
+        </ol>
+      </div>
+    </div>
+</section>
+
+
+<!-- Add results -->
+<section class="hero-body">
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-full-width">
+        <h2 class="title is-3">Results</h2>
+      </div>
+  </div>
+
+  <!-- MCIO -->
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <p>
+        <strong>Semantic Shift</strong>
+      </p>
+      <br>
+      <div class="column is-four-fifths"><img src="./static/images/main_res.png"></div>
+    </div>
+  </div>
+
+  <!-- WCS -->
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <p>
+        <strong>Semantic & Covariate Shift</strong>
+      </p>
+      <br>
+      <div class="column is-four-fifths"><img src="./static/images/far_near.png"></div>
+    </div>
+  </div>
+
+  <!-- 1-1 setting -->
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <p>
+        <strong>Covariate Shift</strong>
+      </p>
+      <br>
+      <div class="column is-four-fifths"><img src="./static/images/near.png"></div>
+    </div>
+  </div>
+</section>
+
+<section class="hero-body">
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-full-width">
+        <h2 class="title is-3">Visualizations</h2>
+      </div>
+  </div>
+
+  <!-- Attention maps -->
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-full-width">
+        <h3 class="title is-4">Likelihood Plots</h3>
+      </div>
+  </div>
+
+  <!-- MCIO -->
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <p>
+        <strong>CIFAR-10</strong>
+      </p>
+      <div class="column is-four-fifths"><img src="./static/images/ll_cifar10.png"></div>
+    </div>
+  </div>
+
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <p>
+        <strong>CIFAR-100</strong>
+      </p>
+      <div class="column is-four-fifths"><img src="./static/images/ll_cifar100.png"></div>
+    </div>
+  </div>
+</section>
 
 <section class="section">
   <div class="container is-max-desktop">
