@@ -22,7 +22,12 @@
 
 ## :bulb: **Contributions**:
 
-![main-method](figures/intuition_orig.png)
+<p align="center">
+  <img src="docs/static//images/contrib.png" width="410" />
+</p>
+
+<!-- ![main-method](docs/static//images/contrib.png) -->
+
 - A new density-based OOD detection technique called FlowCon is proposed. We introduce a new loss function $L_{con}$ which contrastively learns class separability in the probability distribution space. This learning occurs without any external OOD dataset and it operates on fixed classifiers.
 
 - The proposed method is evaluated on various metrics - FPR95, AUROC, AUPR-Success, and AUPR-Error and compared against state of the art. We observe that FlowCon is competitive or outperforms most methods under different OOD conditions. Additionally, FlowCon is stable even for a large number of classes and shows improvement for high-dimensional features
@@ -34,15 +39,52 @@
 ## **Results**
 
 
-### FAR-OOD likelihood plots when $D_{in}=CIFAR10$ on ResNet-18 and WideResNet models. 
-![cifar-10WRN](docs/static/images/ll_cifar10.png) 
+### **FAR-OOD likelihood plots when $D_{in}=CIFAR10$ on ResNet-18 and WideResNet models**
+<p align="center">
+  <img src="docs/static/images/ll_cifar10.png" width="410" height="400" />
+</p>
 
-### FAR-OOD likelihood plots when $D_{in}=CIFAR100$ on ResNet-18 and WideResNet models. 
-![cifar-10WRN](docs/static/images/ll_cifar100.png) 
+### **FAR-OOD likelihood plots when $D_{in}=CIFAR100$ on ResNet-18 and WideResNet models**
+<p align="center">
+  <img src="docs/static/images/ll_cifar100.png" width="410" height="400" />
+</p>
+
+## **FlowCon Comparison for Semantic and Covariate Shift**
+
+
+</br>
+
+<p align="center">
+  <img src="docs/static/images/main_res.png" width="400" height="350"/>
+</p>
+
+<div style="display: flex; justify-content: space-between;">
+  <img src="docs/static/images/far_near.png" alt="Image 1" style="width: 45%;"/>
+  <img src="docs/static/images/near.png" alt="Image 2" style="width: 45%; "/>
+</div>
+<!-- <p align="center">
+  <img src="docs/static/images/far_near.png" width="310" height="200"/>
+</p>
+
+<p align="center">
+  <img src="docs/static/images/near.png" width="310" height="200"/>
+</p> -->
+
+## **UMAP Embeddings for Semantic and Covariate Shift**
+<p align="center">
+  <img src="docs/static/images/umap.png" width="410" height="200"/>
+</p>
+
+<p align="center">
+  <img src="docs/static/images/umap_cifar100.png" width="410" height="200"/>
+</p>
 
 
 
-# Pre-trained model weights
+## **Usage**
+`COMING SOON`
+
+## **Pre-trained model weights**
 
  `COMING SOON`
 
