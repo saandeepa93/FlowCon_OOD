@@ -37,7 +37,7 @@
 
 
 ## **Results**
-
+<!-- 
 
 ### **FAR-OOD likelihood plots when $D_{in}=CIFAR10$ on ResNet-18 and WideResNet models**
 <p align="center">
@@ -50,7 +50,7 @@
 </p>
 
 ## **FlowCon Comparison for Semantic and Covariate Shift**
-
+ -->
 
 </br>
 
@@ -66,18 +66,18 @@
   <img src="docs/static/images/far_near.png" width="310" height="200"/>
 </p>
 
-<p align="center">
+<!-- <p align="center">
   <img src="docs/static/images/near.png" width="310" height="200"/>
-</p> -->
+</p> --> -->
 
-## **UMAP Embeddings for Semantic and Covariate Shift**
+<!-- ## **UMAP Embeddings for Semantic and Covariate Shift**
 <p align="center">
   <img src="docs/static/images/umap.png" width="410" height="200"/>
 </p>
 
 <p align="center">
   <img src="docs/static/images/umap_cifar100.png" width="410" height="200"/>
-</p>
+</p> -->
 
 
 
