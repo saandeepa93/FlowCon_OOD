@@ -68,7 +68,7 @@
 
 <!-- <p align="center">
   <img src="docs/static/images/near.png" width="310" height="200"/>
-</p> --> -->
+</p> -->
 
 <!-- ## **UMAP Embeddings for Semantic and Covariate Shift**
 <p align="center">
