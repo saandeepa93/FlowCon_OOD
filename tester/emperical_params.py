@@ -69,7 +69,6 @@ def calc_emp_params(cfg, args, loader, pretrained, flow, dist_dir, device, label
   z = torch.cat(z_all, dim=0)
 
   plot_umap(cfg, z.cpu(), labels_all.cpu(), f"{args.config}", 2, "in_ood", labels_in_ood)
-  e()
 
   mu_k, std_k , z_k= [], [], []
   for cls in range(cfg.DATASET.N_CLASS):
@@ -276,7 +275,7 @@ if __name__ == "__main__":
   # ood_datasets = ['cifar10']
   result = {}
 
-  criterion = FlowConLoss(cfg, device)
+  criterion = FlowConLoss(cfg, device, test=True)
 
 
   loss_criterion = nn.CrossEntropyLoss()

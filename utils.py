@@ -265,8 +265,6 @@ def plot_umap(cfg, X_lst_un, y_lst, name, dim, mode, labels_in_ood=None):
     df = pd.DataFrame(X_lst, columns=["x", "y"])
   df_color = pd.DataFrame(y_lst_label, columns=["class"])
   df['legend_group'] = df_color['class'].apply(lambda x: 'ID' if x in id_list else "OOD")
-  print(df_color.head())
-  # e()
   df = df.join(df_color)
   if dim == 3:
     fig = px.scatter_3d(df, x='x', y='y', z='z',color='class', title=f"{name}", \
@@ -276,11 +274,8 @@ def plot_umap(cfg, X_lst_un, y_lst, name, dim, mode, labels_in_ood=None):
                     #  color_discrete_sequence=colors_all
     )
   
-#   fig.update_traces(marker=dict(size=8))
-  # fig.update_traces(marker=dict(size=12, line=dict(width=2)))
-  # fig.update_traces(marker=dict(size=[12 if c == '100' else 8 for c in df['class']]))
   fig.for_each_trace(lambda t: t.update(showlegend=False) if t.name in id_list else t.update(name='OOD'))
-  fig.update_layout(title="CV vs Entropy",  margin=dict(l=0, r=0, t=0, b=0), showlegend=True)
+  fig.update_layout(title=None,  margin=dict(l=0, r=0, t=0, b=0), showlegend=True)
   fig.update_layout(
       legend=dict(
           yanchor="top",

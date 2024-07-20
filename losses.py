@@ -9,7 +9,7 @@ def gaussian_log_p(x, mean, log_sd):
 
 
 class FlowConLoss:
-  def __init__(self, cfg, device, p_y=None):
+  def __init__(self, cfg, device, test=False):
     self.cfg = cfg
     self.device=device
     self.n_bins = cfg.FLOW.N_BINS
@@ -18,6 +18,7 @@ class FlowConLoss:
 
     self.tau = cfg.LOSS.TAU
     self.tau2 = cfg.LOSS.TAU2
+    self.test = test
 
 
     # RAF12
@@ -49,15 +50,24 @@ class FlowConLoss:
 
     logdet = logdet.mean()
     loss = self.init_loss + logdet + log_p_nll
+
+    if self.test:
+      score = loss / (log(2) * self.n_pixel), # CONVERTING LOGe to LOG2 |
+      log_p = log_p_nll / (log(2) * self.n_pixel)  #                     v
+      return (
+        score, 
+        log_p, 
+        (logdet / (log(2) * self.n_pixel)).mean(), 
+        (log_p_all/ (log(2) * self.n_pixel))
+      ) 
+    else:
+      return ( 
     
-    return ( 
-      # (-loss / (log(2) * self.n_pixel)).mean(), # CONVERTING LOGe to LOG2 |
-      # (log_p_nll / (log(2) * self.n_pixel)).mean(), #                     v
-      (loss / (log(2) * self.n_pixel)), # CONVERTING LOGe to LOG2 |
-      (log_p_nll / (log(2) * self.n_pixel)), #                     v
-      (logdet / (log(2) * self.n_pixel)).mean(), 
-      (log_p_all/ (log(2) * self.n_pixel))
-  )
+        (-loss / (log(2) * self.n_pixel)).mean(), # CONVERTING LOGe to LOG2 |
+        (log_p_nll / (log(2) * self.n_pixel)).mean(), #                     v
+        (logdet / (log(2) * self.n_pixel)).mean(), 
+        (log_p_all/ (log(2) * self.n_pixel))
+    )
 
 
   def conLoss(self, log_p_all, labels):
