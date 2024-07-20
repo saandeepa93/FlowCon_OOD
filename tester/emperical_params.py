@@ -325,8 +325,6 @@ if __name__ == "__main__":
       log_sd = torch.load(os.path.join(dist_path, "log_sd.pt"), map_location=device)
       mu =  torch.stack(mu)
       log_sd =  torch.stack(log_sd)
-      ic(log_sd.mean(1).exp())
-      e()
       
       scores_in = calc_scores_2(cfg, args, test_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
       # with torch.no_grad():
@@ -358,9 +356,8 @@ if __name__ == "__main__":
             lables = torch.cat([torch.tensor(test_set.targets), torch.ones(len(ood_dataset), dtype=torch.int8)*cfg.DATASET.N_CLASS], dim=0)
             # lables = torch.cat([torch.ones(len(test_set), dtype=torch.int8), torch.zeros(len(ood_dataset), dtype=torch.int8)], dim=0)
             calc_emp_params(cfg, args, in_ood_loader, pretrained, model, dist_path, device, lables)
-            e()
           
-          print("Calculating Scores...")
+          print("Calculating Scores...") 
           scores_out = calc_scores_2(cfg, args, ood_loader, pretrained, model, cls, mu, log_sd, criterion, loss_criterion, device, False)
           scores_out = scores_out[:num_ood]
           scores_out = np.array(scores_out)
