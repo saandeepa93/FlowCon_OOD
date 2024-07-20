@@ -81,10 +81,57 @@
 
 
 
-## **Usage**
-`COMING SOON`
+
+## **Configurations**
+* All config files are present under path `./configs/experiments`
+* We have 4 config files 
+```
+cifar10_3.yaml -> CIFAR10 with ResNet18
+cifar10_5.yaml -> CIFAR10 with WideResNet
+cifar100_6.yaml -> CIFAR100 with ResNet18
+cifar100_4.yaml -> CIFAR100 with WideResNet
+```
+
+## **Pretrained Classifiers**
+
+* The original ResNet18 and WideResNet classifiers are taken from [Heatmap paper](https://github.com/jhornauer/heatmap_ood?tab=readme-ov-file#pre-trained-models)
+
+
+
+## **Training FlowCon model**
+
+### **CIFAR-10**
+Training `Resnet` and `WideResNet` FlowCon model for CIFAR10. Follow similar commands for other configs
+
+```
+CUDA_VISIBLE_DEVICES=0 python ./trainer/train_flow.py --config cifar10_3 #Resnet
+
+CUDA_VISIBLE_DEVICES=0 python ./trainer/train_flow.py --config cifar10_5 #WRN
+```
+
+### **CIFAR-100**
+```
+CUDA_VISIBLE_DEVICES=0 python ./trainer/train_flow.py --config cifar100_6
+```
+
+```
+CUDA_VISIBLE_DEVICES=0 python ./trainer/train_flow.py --config cifar100_4
+```
+
+
+## **Getting OOD Scores**
+* Inference follows similar arguments
+```
+CUDA_VISIBLE_DEVICES=0 python ./tester/emperical_params.py --config cifar10_5
+
+CUDA_VISIBLE_DEVICES=0 python ./tester/emperical_params.py --config cifar100_4
+```
+
+* The $k$ distributions will be saved under `./data/distributions` directory
+
+* The results will be saved under `./data/results` directory
 
 ## **Pre-trained model weights**
 
- `COMING SOON`
+ All the pretrained classifiers, and pretrained FlowCon models can be found in [link](https://usf.box.com/s/j0dklw5wfqllanzb5v9lc8t8a0uutfpg)
 
