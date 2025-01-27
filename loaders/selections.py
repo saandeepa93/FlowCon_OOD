@@ -3,7 +3,6 @@ from torchvision import datasets, transforms
 from PIL import Image
 import torch
 from torch import nn 
-import timm
 
 from models import ResNet18, ResNet50, ResNet_Linear
 from models import Resnet101, Resnet101_Linear, EfficientNet
